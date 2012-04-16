@@ -923,7 +923,16 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_ATTRIB_FORMAT	0x2003 /* available in versions 3+ */
 
 typedef struct __DRIimageRec          __DRIimage;
+typedef struct __DRIimageAttrsRec     __DRIimageAttrs;
 typedef struct __DRIimageExtensionRec __DRIimageExtension;
+
+struct __DRIimageAttrsRec {
+    unsigned int        format;
+    unsigned int        width;
+    unsigned int        height;
+    unsigned int        pitch;
+};
+
 struct __DRIimageExtensionRec {
     __DRIextension base;
 
@@ -963,6 +972,16 @@ struct __DRIimageExtensionRec {
     * \since 4
     */
    int (*write)(__DRIimage *image, const void *buf, size_t count);
+
+    /**
+     * Create image with extra attributes.
+     *
+     * \since 5
+     */
+    __DRIimage *(*createImageFromName2)(__DRIscreen *screen,
+                                        int name,
+                                        const __DRIimageAttrs *attrs,
+                                        void *loaderPrivate);
 };
 
 
