@@ -176,11 +176,13 @@ static const struct __DRI2flushExtensionRec intelFlushExtension = {
 };
 
 static __DRIimage *
-intel_create_image_from_name(__DRIscreen *screen,
-			     int width, int height, int format,
-			     int name, int pitch, void *loaderPrivate)
+intel_create_image_from_name2(__DRIscreen *screen,
+			      int name, unsigned int offset,
+			      const __DRIimageAttrs *attrs,
+			      void *loaderPrivate)
 {
     struct intel_screen *intelScreen = screen->driverPrivate;
+    struct intel_region_attributes region_attrs;
     __DRIimage *image;
     int cpp;
 
@@ -188,9 +190,9 @@ intel_create_image_from_name(__DRIscreen *screen,
     if (image == NULL)
 	return NULL;
 
-    image->dri_format = format;
+    image->dri_format = attrs->format;
 
-    switch (format) {
+    switch (attrs->format) {
     case __DRI_IMAGE_FORMAT_RGB565:
        image->format = MESA_FORMAT_RGB565;
        image->internal_format = GL_RGB;
@@ -224,15 +226,34 @@ intel_create_image_from_name(__DRIscreen *screen,
     image->data = loaderPrivate;
     cpp = _mesa_get_format_bytes(image->format);
 
-    image->region = intel_region_alloc_for_handle(intelScreen,
-						  cpp, width, height,
-						  pitch, name, "image");
+    region_attrs.cpp       = cpp;
+    region_attrs.width     = attrs->width;
+    region_attrs.height    = attrs->height;
+    region_attrs.pitch     = attrs->pitch;
+    image->region = intel_region_alloc_for_handle2(intelScreen, name, "image",
+						   &region_attrs);
     if (image->region == NULL) {
        FREE(image);
        return NULL;
     }
 
     return image;	
+}
+
+static __DRIimage *
+intel_create_image_from_name(__DRIscreen *screen,
+			     int width, int height, int format,
+			     int name, int pitch, void *loaderPrivate)
+{
+    __DRIimageAttrs attrs;
+
+    attrs.plane_id  = 0;
+    attrs.format    = format;
+    attrs.width     = width;
+    attrs.height    = height;
+    attrs.pitch     = pitch;
+    attrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
+    return intel_create_image_from_name2(screen, name, 0, &attrs, loaderPrivate);
 }
 
 static __DRIimage *
@@ -447,7 +468,8 @@ static struct __DRIimageExtensionRec intelImageExtension = {
     intel_query_image,
     intel_dup_image,
     intel_validate_usage,
-    intel_image_write
+    intel_image_write,
+    intel_create_image_from_name2
 };
 
 static const __DRIextension *intelScreenExtensions[] = {
