@@ -218,6 +218,16 @@ intel_create_image_from_name2(__DRIscreen *screen,
        image->internal_format = GL_RGB;
        image->data_type = GL_UNSIGNED_BYTE;
        break;
+    case __DRI_IMAGE_FORMAT_R8:
+       image->format = MESA_FORMAT_R8;
+       image->internal_format = GL_RED;
+       image->data_type = GL_UNSIGNED_BYTE;
+       break;
+    case __DRI_IMAGE_FORMAT_RG88:
+       image->format = MESA_FORMAT_GR88;
+       image->internal_format = GL_RG;
+       image->data_type = GL_UNSIGNED_BYTE;
+       break;
     default:
        free(image);
        return NULL;
