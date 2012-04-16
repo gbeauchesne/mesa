@@ -1010,6 +1010,25 @@ dri2_invoke_create_image_from_name(struct dri2_egl_display *dpy,
                attrs->pitch, user_data);
 }
 
+static unsigned int
+dri2_image_get_picture_structure(uint32_t egl_picture_structure)
+{
+    unsigned int picture_structure;
+
+    switch (egl_picture_structure) {
+    case EGL_DRM_BUFFER_STRUCTURE_TOP_FIELD:
+        picture_structure = __DRI_IMAGE_STRUCTURE_TOP_FIELD;
+        break;
+    case EGL_DRM_BUFFER_STRUCTURE_BOTTOM_FIELD:
+        picture_structure = __DRI_IMAGE_STRUCTURE_BOTTOM_FIELD;
+        break;
+    default:
+        picture_structure = __DRI_IMAGE_STRUCTURE_FRAME;
+        break;
+    }
+    return picture_structure;
+}
+
 static _EGLImage *
 dri2_create_image_drm_name(_EGLDisplay *disp, _EGLContext *ctx,
 			   EGLint name,
@@ -1034,15 +1053,15 @@ dri2_create_image_drm_name(_EGLDisplay *disp, _EGLContext *ctx,
       return NULL;
    }
 
-   imageAttrs.plane_id  = 0;
+   imageAttrs.plane_id  = attrs->PlaneId;
    imageAttrs.format    = format;
    imageAttrs.width     = attrs->Width;
    imageAttrs.height    = attrs->Height;
    imageAttrs.pitch     = pitch;
-   imageAttrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
+   imageAttrs.structure = dri2_image_get_picture_structure(attrs->DRMBufferStructureMESA);
    dri2_img->dri_image  = dri2_invoke_create_image_from_name(
        dri2_dpy,
-       name, 0,
+       name, attrs->DRMBufferOffsetMESA,
        &imageAttrs, dri2_img
    );
    if (dri2_img->dri_image == NULL) {
@@ -1067,9 +1086,10 @@ dri2_create_image_mesa_drm_buffer(_EGLDisplay *disp, _EGLContext *ctx,
       return NULL;
 
    if (attrs.Width <= 0 || attrs.Height <= 0 ||
-       attrs.DRMBufferStrideMESA <= 0) {
+       attrs.DRMBufferStrideMESA <= 0 ||
+       attrs.DRMBufferOffsetMESA < 0) {
       _eglError(EGL_BAD_PARAMETER,
-		"bad width, height or stride");
+		"bad width, height, stride or offset");
       return NULL;
    }
 
@@ -1078,6 +1098,13 @@ dri2_create_image_mesa_drm_buffer(_EGLDisplay *disp, _EGLContext *ctx,
    case EGL_DRM_BUFFER_FORMAT_ARGB32_MESA:
       format = __DRI_IMAGE_FORMAT_ARGB8888;
       pitch /= 4;
+      break;
+   case EGL_DRM_BUFFER_FORMAT_R8_MESA:
+      format = __DRI_IMAGE_FORMAT_R8;
+      break;
+   case EGL_DRM_BUFFER_FORMAT_RG8_MESA:
+      format = __DRI_IMAGE_FORMAT_RG88;
+      pitch /= 2;
       break;
    default:
       _eglError(EGL_BAD_PARAMETER,

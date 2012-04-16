@@ -104,6 +104,32 @@ typedef EGLDisplay (EGLAPIENTRYP PFNEGLGETDRMDISPLAYMESA) (int fd);
 
 #ifdef EGL_MESA_drm_image
 /* Mesa's extension to EGL_MESA_drm_image... */
+#ifndef EGL_DRM_BUFFER_PLANE_ID_MESA
+#define EGL_DRM_BUFFER_PLANE_ID_MESA		0x31D6
+#endif
+#ifndef EGL_DRM_BUFFER_OFFSET_MESA
+#define EGL_DRM_BUFFER_OFFSET_MESA		0x31D7
+#endif
+#ifndef EGL_DRM_BUFFER_STRUCTURE_MESA
+#define EGL_DRM_BUFFER_STRUCTURE_MESA		0x31D8
+#endif
+/* EGL_DRM_BUFFER_FORMAT_MESA attribute values */
+#ifndef EGL_DRM_BUFFER_FORMAT_R8_MESA
+#define EGL_DRM_BUFFER_FORMAT_R8_MESA		0x8229	/* 8-bit red */
+#endif
+#ifndef EGL_DRM_BUFFER_FORMAT_RG8_MESA
+#define EGL_DRM_BUFFER_FORMAT_RG8_MESA		0x822B	/* 8-bit red + green */
+#endif
+/* EGL_DRM_BUFFER_STRUCTURE_MESA attribute values */
+#ifndef EGL_DRM_BUFFER_STRUCTURE_TOP_FIELD
+#define EGL_DRM_BUFFER_STRUCTURE_TOP_FIELD	0x0001	/* Interlaced, top field */
+#endif
+#ifndef EGL_DRM_BUFFER_STRUCTURE_BOTTOM_FIELD
+#define EGL_DRM_BUFFER_STRUCTURE_BOTTOM_FIELD	0x0002	/* Interlaced, bottom field */
+#endif
+#ifndef EGL_DRM_BUFFER_STRUCTURE_FRAME
+#define EGL_DRM_BUFFER_STRUCTURE_FRAME		0x0003	/* Whole Picture */
+#endif
 #ifndef EGL_DRM_BUFFER_USE_CURSOR_MESA
 #define EGL_DRM_BUFFER_USE_CURSOR_MESA		0x0004
 #endif

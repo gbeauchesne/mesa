@@ -49,6 +49,7 @@ _eglParseImageAttribList(_EGLImageAttribs *attrs, _EGLDisplay *dpy,
    attrs->ImagePreserved = EGL_FALSE;
    attrs->GLTextureLevel = 0;
    attrs->GLTextureZOffset = 0;
+   attrs->DRMBufferStructureMESA = EGL_DRM_BUFFER_STRUCTURE_FRAME;
 
    if (!attrib_list)
       return err;
@@ -86,6 +87,15 @@ _eglParseImageAttribList(_EGLImageAttribs *attrs, _EGLDisplay *dpy,
          break;
       case EGL_DRM_BUFFER_STRIDE_MESA:
          attrs->DRMBufferStrideMESA = val;
+         break;
+      case EGL_DRM_BUFFER_PLANE_ID_MESA:
+         attrs->PlaneId = val;
+         break;
+      case EGL_DRM_BUFFER_OFFSET_MESA:
+         attrs->DRMBufferOffsetMESA = val;
+         break;
+      case EGL_DRM_BUFFER_STRUCTURE_MESA:
+         attrs->DRMBufferStructureMESA = val;
          break;
 
       default:

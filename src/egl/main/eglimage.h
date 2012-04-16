@@ -47,9 +47,12 @@ struct _egl_image_attribs
    /* EGL_MESA_drm_image */
    EGLint Width;
    EGLint Height;
+   EGLint PlaneId;
    EGLint DRMBufferFormatMESA;
    EGLint DRMBufferUseMESA;
    EGLint DRMBufferStrideMESA;
+   EGLint DRMBufferOffsetMESA;
+   EGLint DRMBufferStructureMESA;
 };
 
 /**
