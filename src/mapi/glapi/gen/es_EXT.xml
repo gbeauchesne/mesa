@@ -627,4 +627,12 @@
     <enum name="REQUIRED_TEXTURE_IMAGE_UNITS_OES"         value="0x8D68"/>
 </category>
 
+<!-- 103. GL_EXT_texture_rg -->
+<category name="GL_EXT_texture_rg" number="103">
+    <enum name="RED_EXT"                                  value="0x1903"/>
+    <enum name="RG_EXT"                                   value="0x8227"/>
+    <enum name="R8_EXT"                                   value="0x8229"/>
+    <enum name="RG8_EXT"                                  value="0x822B"/>
+</category>
+
 </OpenGLAPI>
