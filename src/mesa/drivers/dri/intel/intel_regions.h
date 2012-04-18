@@ -60,6 +60,7 @@ struct intel_region
 {
    drm_intel_bo *bo;  /**< buffer manager's buffer */
    GLuint refcount; /**< Reference count for region */
+   GLuint plane_id; /**< Plane id out of 3 (range: 0..2) */
    GLuint cpp;      /**< bytes per pixel */
    GLuint width;    /**< in pixels */
    GLuint height;   /**< in pixels */
@@ -176,6 +177,14 @@ struct __DRIimageRec {
    GLenum data_type;
    void *data;
 };
+
+struct _mesa_HashTable;
+
+struct _mesa_HashTable *
+intel_region_hash_new(void);
+
+void
+intel_region_hash_destroy(struct _mesa_HashTable **h);
 
 #ifdef __cplusplus
 }

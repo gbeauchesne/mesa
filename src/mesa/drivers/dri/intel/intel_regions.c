@@ -104,7 +104,95 @@ debug_backtrace(void)
 
 #endif
 
+/* Region hash utilities */
+#define MAX_PLANES 3
 
+struct hash_entry {
+    struct intel_region *regions[MAX_PLANES];
+    unsigned int num_regions;
+};
+
+static inline struct hash_entry *
+hash_entry_new(void)
+{
+    return calloc(1, sizeof(struct hash_entry));
+}
+
+static inline void
+hash_entry_destroy(struct hash_entry *e)
+{
+    free(e);
+}
+
+static void
+intel_region_hash_destroy_callback(GLuint key, void *data, void *userData)
+{
+    hash_entry_destroy(data);
+}
+
+struct _mesa_HashTable *
+intel_region_hash_new(void)
+{
+    return _mesa_NewHashTable();
+}
+
+void
+intel_region_hash_destroy(struct _mesa_HashTable **h_ptr)
+{
+    struct _mesa_HashTable * const h = *h_ptr;
+
+   /* Some regions may still have references to them at this point, so
+    * flush the hash table to prevent _mesa_DeleteHashTable() from
+    * complaining about the hash not being empty; */
+   _mesa_HashDeleteAll(h, intel_region_hash_destroy_callback, NULL);
+   _mesa_DeleteHashTable(h);
+   *h_ptr = NULL;
+}
+
+static inline struct intel_region *
+intel_region_hash_lookup(struct _mesa_HashTable *h, uint32_t name, uint32_t id)
+{
+    struct hash_entry * const e = _mesa_HashLookup(h, name);
+
+    if (e && id < ARRAY_SIZE(e->regions))
+        return e->regions[id];
+    return NULL;
+}
+
+static void
+intel_region_hash_insert(struct _mesa_HashTable *h, struct intel_region *region)
+{
+    struct hash_entry *e = _mesa_HashLookup(h, region->name);
+
+    if (!e) {
+        e = hash_entry_new();
+        if (!e)
+            return;
+        _mesa_HashInsert(h, region->name, e);
+    }
+
+    if (region->plane_id < ARRAY_SIZE(e->regions)) {
+        if (!e->regions[region->plane_id])
+            e->num_regions++;
+        e->regions[region->plane_id] = region;
+    }
+}
+
+static void
+intel_region_hash_remove(struct _mesa_HashTable *h, struct intel_region *region)
+{
+    struct hash_entry * const e = _mesa_HashLookup(h, region->name);
+
+    if (e && region->plane_id < ARRAY_SIZE(e->regions)) {
+        e->regions[region->plane_id] = NULL;
+        e->num_regions--;
+    }
+
+    if (e->num_regions == 0) {
+        _mesa_HashRemove(h, region->name);
+        hash_entry_destroy(e);
+    }
+}
 
 /* XXX: Thread safety?
  */
@@ -169,6 +257,7 @@ intel_region_alloc_internal(struct intel_screen *screen,
    if (region == NULL)
       return region;
 
+   region->plane_id = 0;
    region->cpp = attrs->cpp;
    region->width = attrs->width;
    region->height = attrs->height;
@@ -223,8 +312,7 @@ intel_region_flink(struct intel_region *region, uint32_t *name)
       if (drm_intel_bo_flink(region->bo, &region->name))
 	 return false;
       
-      _mesa_HashInsert(region->screen->named_regions,
-		       region->name, region);
+      intel_region_hash_insert(region->screen->named_regions, region);
    }
 
    *name = region->name;
@@ -252,7 +340,7 @@ intel_region_alloc_for_handle2(struct intel_screen *screen,
    int ret;
    uint32_t bit_6_swizzle, tiling;
 
-   region = _mesa_HashLookup(screen->named_regions, handle);
+   region = intel_region_hash_lookup(screen->named_regions, handle, 0);
    if (region != NULL) {
       dummy = NULL;
       if (!intel_region_validate_attributes(region, attrs)) {
@@ -283,7 +371,7 @@ intel_region_alloc_for_handle2(struct intel_screen *screen,
    }
 
    region->name = handle;
-   _mesa_HashInsert(screen->named_regions, handle, region);
+   intel_region_hash_insert(screen->named_regions, region);
 
    return region;
 }
@@ -325,7 +413,7 @@ intel_region_release(struct intel_region **region_handle)
       drm_intel_bo_unreference(region->bo);
 
       if (region->name > 0)
-	 _mesa_HashRemove(region->screen->named_regions, region->name);
+	 intel_region_hash_remove(region->screen->named_regions, region);
 
       free(region);
    }
