@@ -93,6 +93,7 @@ static const char *es2_extensions[] = {
    /* Optional GLES2 */
    "GL_ARB_depth_texture",
    "GL_EXT_framebuffer_object",
+   "GL_EXT_texture_rg",
 
    NULL,
 };
