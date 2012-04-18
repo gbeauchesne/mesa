@@ -35,4 +35,7 @@ wayland_drm_buffer_get_format(struct wl_buffer *buffer_base);
 void *
 wayland_drm_buffer_get_buffer(struct wl_buffer *buffer);
 
+const struct wl_buffer_layout *
+wayland_drm_buffer_get_layout(struct wl_buffer *buffer);
+
 #endif
