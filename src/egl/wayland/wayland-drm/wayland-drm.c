@@ -101,29 +101,31 @@ const static struct wl_buffer_interface drm_buffer_interface = {
 	buffer_destroy
 };
 
+static uint32_t
+base_to_drm_buffer_format(uint32_t base_format)
+{
+	uint32_t format;
+
+	switch (base_format) {
+	case WL_BUFFER_FORMAT_ARGB8888:
+		format = WL_DRM_FORMAT_ARGB8888;
+		break;
+	case WL_BUFFER_FORMAT_XRGB8888:
+		format = WL_DRM_FORMAT_XRGB8888;
+		break;
+	default:
+		format = 0;
+		break;
+	}
+	return format;
+}
+
 static void
-drm_create_buffer(struct wl_client *client, struct wl_resource *resource,
-		  uint32_t id, uint32_t name, int32_t width, int32_t height,
-		  uint32_t stride, uint32_t format)
+drm_do_create_buffer(struct wl_client *client, struct wl_resource *resource,
+		uint32_t id, uint32_t name, const struct wl_buffer_layout *layout)
 {
 	struct wl_drm *drm = resource->data;
 	struct wl_drm_buffer *buffer;
-	struct wl_buffer_layout *layout;
-	uint32_t base_format;
-
-	switch (format) {
-	case WL_DRM_FORMAT_ARGB8888:
-		base_format = WL_BUFFER_FORMAT_ARGB8888;
-		break;
-	case WL_DRM_FORMAT_XRGB8888:
-		base_format = WL_BUFFER_FORMAT_XRGB8888;
-		break;
-	default:
-		wl_resource_post_error(resource,
-				       WL_DRM_ERROR_INVALID_FORMAT,
-				       "invalid format");
-		return;
-	}
 
 	buffer = calloc(1, sizeof *buffer);
 	if (buffer == NULL) {
@@ -131,24 +133,25 @@ drm_create_buffer(struct wl_client *client, struct wl_resource *resource,
 		return;
 	}
 
-	buffer->drm = drm;
-	buffer->buffer.format = base_format;
-	buffer->buffer.width = width;
-	buffer->buffer.height = height;
-	buffer->format = format;
+	buffer->drm		= drm;
+	buffer->buffer.format	= layout->format;
+	buffer->buffer.width	= layout->width;
+	buffer->buffer.height	= layout->height;
+	buffer->format		= base_to_drm_buffer_format(layout->format);
+	buffer->layout		= *layout;
 
-	layout = &buffer->layout;
-	layout->format		= base_format;
-	layout->width		= width;
-	layout->height		= height;
-	layout->num_planes	= 1;
-	layout->offsets[0]	= 0;
-	layout->pitches[0]	= stride;
+	if (!buffer->format) {
+		wl_resource_post_error(resource,
+				       WL_DRM_ERROR_INVALID_FORMAT,
+				       "invalid format");
+		return;
+	}
 
 	buffer->driver_buffer =
 		drm->callbacks->reference_buffer(drm->user_data, name,
-						 width, height,
-						 stride, format);
+						 layout->width, layout->height,
+						 layout->pitches[0],
+						 layout->format);
 
 	if (buffer->driver_buffer == NULL) {
 		wl_resource_post_error(resource,
@@ -170,6 +173,55 @@ drm_create_buffer(struct wl_client *client, struct wl_resource *resource,
 }
 
 static void
+drm_create_buffer(struct wl_client *client, struct wl_resource *resource,
+		  uint32_t id, uint32_t name, int32_t width, int32_t height,
+		  uint32_t stride, uint32_t format)
+{
+	struct wl_buffer_layout layout;
+
+	switch (format) {
+	case WL_DRM_FORMAT_ARGB8888:
+		layout.format     = WL_BUFFER_FORMAT_ARGB8888;
+		layout.num_planes = 1;
+		layout.offsets[0] = 0;
+		layout.pitches[0] = stride;
+		break;
+	case WL_DRM_FORMAT_XRGB8888:
+		layout.format     = WL_BUFFER_FORMAT_XRGB8888;
+		layout.num_planes = 1;
+		layout.offsets[0] = 0;
+		layout.pitches[0] = stride;
+		break;
+	default:
+		wl_resource_post_error(resource,
+				       WL_DRM_ERROR_INVALID_FORMAT,
+				       "invalid format");
+		return;
+	}
+
+	layout.width  = width;
+	layout.height = height;
+	drm_do_create_buffer(client, resource, id, name, &layout);
+}
+
+static void
+drm_create_buffer_with_layout(struct wl_client *client,
+		struct wl_resource *resource, uint32_t id, uint32_t name,
+		struct wl_array *layout_array)
+{
+	struct wl_buffer_layout layout;
+
+	if (!wl_array_unpack_buffer_layout(layout_array, &layout)) {
+		wl_resource_post_error(resource,
+				       WL_DRM_ERROR_INVALID_LAYOUT,
+				       "invalid layout");
+		return;
+	}
+
+	drm_do_create_buffer(client, resource, id, name, &layout);
+}
+
+static void
 drm_authenticate(struct wl_client *client,
 		 struct wl_resource *resource, uint32_t id)
 {
@@ -185,7 +237,8 @@ drm_authenticate(struct wl_client *client,
 
 const static struct wl_drm_interface drm_interface = {
 	drm_authenticate,
-	drm_create_buffer
+	drm_create_buffer,
+	drm_create_buffer_with_layout
 };
 
 static void
