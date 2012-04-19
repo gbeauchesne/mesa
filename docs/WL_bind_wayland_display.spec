@@ -17,7 +17,7 @@ Status
 
 Version
 
-    Version 1, March 1, 2011
+    Version 2, April 19, 2012
 
 Number
 
@@ -62,6 +62,10 @@ New Tokens
 
         EGL_WAYLAND_BUFFER_WL                   0x31D5
 
+    Accepted in the <attrib_list> parameter of eglCreateImageKHR
+
+        EGL_WAYLAND_BUFFER_PLANE_ID_WL          0x31D6
+
 Additions to the EGL 1.4 Specification:
 
     To bind a server side wl_display to an EGLDisplay, call
@@ -90,3 +94,6 @@ Revision History
 
     Version 1, March 1, 2011
         Initial draft (Benjamin Franzke)
+    Version 2, April 19, 2012
+        Added EGL_WAYLAND_BUFFER_PLANE_ID_WL to specify a plane id for
+        YUV buffers

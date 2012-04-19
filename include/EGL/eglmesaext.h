@@ -139,6 +139,11 @@ typedef EGLDisplay (EGLAPIENTRYP PFNEGLGETDRMDISPLAYMESA) (int fd);
 #define EGL_WL_bind_wayland_display 1
 
 #define EGL_WAYLAND_BUFFER_WL			0x31D5 /* eglCreateImageKHR target */
+/* EGL_WAYLAND_BUFFER_WL attribute values */
+#ifndef EGL_WAYLAND_BUFFER_PLANE_ID_WL
+#define EGL_WAYLAND_BUFFER_PLANE_ID_WL		0x31D6 /* Plane id for YUV buffers */
+#endif
+
 struct wl_display;
 #ifdef EGL_EGLEXT_PROTOTYPES
 EGLAPI EGLBoolean EGLAPIENTRY eglBindWaylandDisplayWL(EGLDisplay dpy, struct wl_display *display);

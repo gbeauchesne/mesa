@@ -62,7 +62,7 @@ struct wl_drm_buffer {
 	struct wl_drm *drm;
 	uint32_t format;
 
-	void *driver_buffer;
+	void *driver_buffers[WL_BUFFER_MAX_PLANES];
 };
 
 static void
@@ -70,9 +70,11 @@ destroy_buffer(struct wl_resource *resource)
 {
 	struct wl_drm_buffer *buffer = resource->data;
 	struct wl_drm *drm = buffer->drm;
+	uint32_t i;
 
-	drm->callbacks->release_buffer(drm->user_data,
-				       buffer->driver_buffer);
+	for (i = 0; i < buffer->layout.num_planes; i++)
+		drm->callbacks->release_buffer(drm->user_data,
+									   buffer->driver_buffers[i]);
 	free(buffer);
 }
 
@@ -113,6 +115,18 @@ base_to_drm_buffer_format(uint32_t base_format)
 	case WL_BUFFER_FORMAT_XRGB8888:
 		format = WL_DRM_FORMAT_XRGB8888;
 		break;
+	case WL_BUFFER_FORMAT_NV12:
+		format = WL_DRM_FORMAT_NV12;
+		break;
+	case WL_BUFFER_FORMAT_YUV420:
+		format = WL_DRM_FORMAT_YUV420;
+		break;
+	case WL_BUFFER_FORMAT_YUV422:
+		format = WL_DRM_FORMAT_YUV422;
+		break;
+	case WL_BUFFER_FORMAT_YUV444:
+		format = WL_DRM_FORMAT_YUV444;
+		break;
 	default:
 		format = 0;
 		break;
@@ -126,6 +140,7 @@ drm_do_create_buffer(struct wl_client *client, struct wl_resource *resource,
 {
 	struct wl_drm *drm = resource->data;
 	struct wl_drm_buffer *buffer;
+	uint32_t i;
 
 	buffer = calloc(1, sizeof *buffer);
 	if (buffer == NULL) {
@@ -147,14 +162,16 @@ drm_do_create_buffer(struct wl_client *client, struct wl_resource *resource,
 		return;
 	}
 
-	buffer->driver_buffer =
-		drm->callbacks->reference_buffer(drm->user_data, name,
-						 layout, 0);
-	if (buffer->driver_buffer == NULL) {
-		wl_resource_post_error(resource,
-				       WL_DRM_ERROR_INVALID_NAME,
-				       "invalid name");
-		return;
+	for (i = 0; i < layout->num_planes; i++) {
+		buffer->driver_buffers[i] =
+			drm->callbacks->reference_buffer(drm->user_data, name,
+							 layout, i);
+		if (!buffer->driver_buffers[i]) {
+			wl_resource_post_error(resource,
+					       WL_DRM_ERROR_INVALID_NAME,
+					       "invalid name");
+			return;
+		}
 	}
 
 	buffer->buffer.resource.object.id = id;
@@ -297,11 +314,13 @@ wayland_drm_buffer_get_format(struct wl_buffer *buffer_base)
 }
 
 void *
-wayland_drm_buffer_get_buffer(struct wl_buffer *buffer_base)
+wayland_drm_buffer_get_buffer(struct wl_buffer *buffer_base, uint32_t plane_id)
 {
 	struct wl_drm_buffer *buffer = (struct wl_drm_buffer *) buffer_base;
 
-	return buffer->driver_buffer;
+	if (plane_id >= buffer->layout.num_planes)
+		return NULL;
+	return buffer->driver_buffers[plane_id];
 }
 
 const struct wl_buffer_layout *

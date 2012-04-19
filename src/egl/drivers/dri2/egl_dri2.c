@@ -1130,6 +1130,21 @@ static const struct wl_buffer_layout_map wl_buffer_layout_map_argb8888 = {
     1, { { __DRI_IMAGE_FORMAT_ARGB8888, 4, 0, 0 }, } };
 static const struct wl_buffer_layout_map wl_buffer_layout_map_xrgb8888 = {
     1, { { __DRI_IMAGE_FORMAT_XRGB8888, 4, 0, 0 }, } };
+static const struct wl_buffer_layout_map wl_buffer_layout_map_nv12 = {
+    2, { { __DRI_IMAGE_FORMAT_R8,      1, 0, 0 },
+         { __DRI_IMAGE_FORMAT_RG88,    2, 1, 1 }, } };
+static const struct wl_buffer_layout_map wl_buffer_layout_map_yuv420 = {
+    3, { { __DRI_IMAGE_FORMAT_R8,      1, 0, 0 },
+         { __DRI_IMAGE_FORMAT_R8,      1, 1, 1 },
+         { __DRI_IMAGE_FORMAT_R8,      1, 1, 1 }, } };
+static const struct wl_buffer_layout_map wl_buffer_layout_map_yuv422 = {
+    3, { { __DRI_IMAGE_FORMAT_R8,      1, 0, 0 },
+         { __DRI_IMAGE_FORMAT_R8,      1, 1, 0 },
+         { __DRI_IMAGE_FORMAT_R8,      1, 1, 0 }, } };
+static const struct wl_buffer_layout_map wl_buffer_layout_map_yuv444 = {
+    3, { { __DRI_IMAGE_FORMAT_R8,      1, 0, 0 },
+         { __DRI_IMAGE_FORMAT_R8,      1, 0, 0 },
+         { __DRI_IMAGE_FORMAT_R8,      1, 0, 0 }, } };
 
 static int
 dri2_image_attrs_from_wl_buffer_layout(__DRIimageAttrs *attrs,
@@ -1144,6 +1159,18 @@ dri2_image_attrs_from_wl_buffer_layout(__DRIimageAttrs *attrs,
         break;
     case WL_BUFFER_FORMAT_XRGB8888:
         m = &wl_buffer_layout_map_xrgb8888;
+        break;
+    case WL_BUFFER_FORMAT_NV12:
+        m = &wl_buffer_layout_map_nv12;
+        break;
+    case WL_BUFFER_FORMAT_YUV420:
+        m = &wl_buffer_layout_map_yuv420;
+        break;
+    case WL_BUFFER_FORMAT_YUV422:
+        m = &wl_buffer_layout_map_yuv422;
+        break;
+    case WL_BUFFER_FORMAT_YUV444:
+        m = &wl_buffer_layout_map_yuv444;
         break;
     default:
         m = NULL;
@@ -1171,41 +1198,35 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
 {
    struct wl_buffer *buffer = (struct wl_buffer *) _buffer;
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   const struct wl_buffer_layout *layout;
    __DRIimage *dri_image;
+   __DRIimageAttrs imageAttrs;
    _EGLImageAttribs attrs;
-   EGLint format, name, stride, pitch, err;
+   EGLint name, err, plane_id;
 
    if (!wayland_buffer_is_drm(buffer))
        return NULL;
 
-   dri_image = wayland_drm_buffer_get_buffer(buffer);
-   
-   dri2_dpy->image->queryImage(dri_image, __DRI_IMAGE_ATTRIB_NAME, &name);
-   dri2_dpy->image->queryImage(dri_image, __DRI_IMAGE_ATTRIB_STRIDE, &stride);
-
    err = _eglParseImageAttribList(&attrs, disp, attr_list);
    if (err != EGL_SUCCESS)
       return NULL;
+   plane_id = attrs.PlaneId;
 
-   attrs.Width = buffer->width;
-   attrs.Height = buffer->height;
+   dri_image = wayland_drm_buffer_get_buffer(buffer, plane_id);
+   dri2_dpy->image->queryImage(dri_image, __DRI_IMAGE_ATTRIB_NAME, &name);
 
-   switch (wayland_drm_buffer_get_format(buffer)) {
-   case WL_DRM_FORMAT_ARGB8888:
-      format = __DRI_IMAGE_FORMAT_ARGB8888;
-      break;
-   case WL_DRM_FORMAT_XRGB8888:
-      format = __DRI_IMAGE_FORMAT_XRGB8888;
-      break;
-   default:
+   layout = wayland_drm_buffer_get_layout(buffer);
+   if (!dri2_image_attrs_from_wl_buffer_layout(&imageAttrs, layout, plane_id)) {
       _eglError(EGL_BAD_PARAMETER,
 		"dri2_create_image_khr: unsupported wl_buffer format");
       return NULL;
    }
 
-   pitch = stride / 4;
-
-   return dri2_create_image_drm_name(disp, ctx, name, &attrs, format, pitch);
+   attrs.Width               = imageAttrs.width;
+   attrs.Height              = imageAttrs.height;
+   attrs.DRMBufferOffsetMESA = layout->offsets[plane_id];
+   return dri2_create_image_drm_name(disp, ctx, name, &attrs,
+				     imageAttrs.format, imageAttrs.pitch);
 }
 #endif
 
