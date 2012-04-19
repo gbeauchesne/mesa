@@ -34,6 +34,8 @@
       <entry name="authenticate_fail" value="0"/>
       <entry name="invalid_format" value="1"/>
       <entry name="invalid_name" value="2"/>
+      <entry name="invalid_layout" value="3"
+             summary="error posted when an invalid layout buffer was supplied"/>
     </enum>
 
     <enum name="format">
@@ -117,6 +119,20 @@
       <arg name="height" type="int"/>
       <arg name="stride" type="uint"/>
       <arg name="format" type="uint"/>
+    </request>
+
+    <request name="create_buffer_with_layout">
+      <description summary="create a DRM buffer with specific layout">
+        Create a Wayland buffer with the specified layout for the
+        named DRM buffer. The DRM surface must have a name using
+        the flink ioctl. The layout is expressed as a wl_array that
+        could be generated with wl_array_pack_buffer_layout().
+      </description>
+      <arg name="id" type="new_id" interface="wl_buffer"/>
+      <arg name="name" type="uint"
+           summary="DRM buffer name"/>
+      <arg name="layout" type="array"
+           summary="buffer layout as a wl_array"/>
     </request>
 
     <!-- Notification of the path of the drm device which is used by
