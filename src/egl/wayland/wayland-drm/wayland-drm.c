@@ -192,6 +192,10 @@ drm_create_buffer(struct wl_client *client, struct wl_resource *resource,
 		  uint32_t stride, uint32_t format)
 {
 	struct wl_buffer_layout layout;
+	uint32_t width2, height2;
+
+	width2  = (width  + 1) / 2;
+	height2 = (height + 1) / 2;
 
 	switch (format) {
 	case WL_DRM_FORMAT_ARGB8888:
@@ -205,6 +209,44 @@ drm_create_buffer(struct wl_client *client, struct wl_resource *resource,
 		layout.num_planes = 1;
 		layout.offsets[0] = 0;
 		layout.pitches[0] = stride;
+		break;
+	case WL_DRM_FORMAT_NV12:
+		layout.format     = WL_BUFFER_FORMAT_NV12;
+		layout.num_planes = 2;
+		layout.offsets[0] = 0;
+		layout.pitches[0] = stride;
+		layout.offsets[1] = layout.offsets[0] + height * layout.pitches[0];
+		layout.pitches[1] = stride;
+		break;
+	case WL_DRM_FORMAT_YUV420:
+		layout.format     = WL_BUFFER_FORMAT_YUV420;
+		layout.num_planes = 3;
+		layout.offsets[0] = 0;
+		layout.pitches[0] = stride;
+		layout.offsets[1] = layout.offsets[0] + height * layout.pitches[0];
+		layout.pitches[1] = width2;
+		layout.offsets[2] = layout.offsets[1] + height2 * layout.pitches[1];
+		layout.pitches[2] = width2;
+		break;
+	case WL_DRM_FORMAT_YUV422:
+		layout.format     = WL_BUFFER_FORMAT_YUV422;
+		layout.num_planes = 3;
+		layout.offsets[0] = 0;
+		layout.pitches[0] = stride;
+		layout.offsets[1] = layout.offsets[0] + height * layout.pitches[0];
+		layout.pitches[1] = width2;
+		layout.offsets[2] = layout.offsets[1] + height * layout.pitches[1];
+		layout.pitches[2] = width2;
+		break;
+	case WL_DRM_FORMAT_YUV444:
+		layout.format     = WL_BUFFER_FORMAT_YUV444;
+		layout.num_planes = 3;
+		layout.offsets[0] = 0;
+		layout.pitches[0] = stride;
+		layout.offsets[1] = layout.offsets[0] + height * layout.pitches[0];
+		layout.pitches[1] = width;
+		layout.offsets[2] = layout.offsets[1] + height * layout.pitches[1];
+		layout.pitches[2] = width;
 		break;
 	default:
 		wl_resource_post_error(resource,
