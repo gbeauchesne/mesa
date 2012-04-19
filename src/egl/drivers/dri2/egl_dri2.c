@@ -1312,20 +1312,24 @@ dri2_export_drm_image_mesa(_EGLDriver *drv, _EGLDisplay *disp, _EGLImage *img,
 
 static void *
 dri2_wl_reference_buffer(void *user_data, uint32_t name,
-			 int32_t width, int32_t height,
-			 uint32_t stride, uint32_t format)
+			 const struct wl_buffer_layout *layout,
+			 uint32_t plane_id)
 {
    _EGLDisplay *disp = user_data;
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    __DRIimageAttrs imageAttrs;
-   int dri_format, cpp;
+   int dri_format, cpp, width, height, stride;
 
-   switch (format) {
-   case WL_DRM_FORMAT_ARGB8888:
-      dri_format =__DRI_IMAGE_FORMAT_ARGB8888;
+   width  = layout->width;
+   height = layout->height;
+   stride = layout->pitches[plane_id];
+
+   switch (layout->format) {
+   case WL_BUFFER_FORMAT_ARGB8888:
+      dri_format = __DRI_IMAGE_FORMAT_ARGB8888;
       cpp = 4;
       break;
-   case WL_DRM_FORMAT_XRGB8888:
+   case WL_BUFFER_FORMAT_XRGB8888:
       dri_format = __DRI_IMAGE_FORMAT_XRGB8888;
       cpp = 4;
       break;
@@ -1333,14 +1337,14 @@ dri2_wl_reference_buffer(void *user_data, uint32_t name,
       return NULL;	   
    }
 
-   imageAttrs.plane_id  = 0;
+   imageAttrs.plane_id  = plane_id;
    imageAttrs.format    = dri_format;
    imageAttrs.width     = width;
    imageAttrs.height    = height;
    imageAttrs.pitch     = stride / cpp;
    imageAttrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
    return dri2_invoke_create_image_from_name(dri2_dpy,
-					     name, 0,
+					     name, layout->offsets[plane_id],
 					     &imageAttrs, NULL);
 }
 

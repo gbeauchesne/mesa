@@ -30,8 +30,8 @@
 
 void *
 egl_g3d_wl_drm_helper_reference_buffer(void *user_data, uint32_t name,
-                                       int32_t width, int32_t height,
-                                       uint32_t stride, uint32_t format);
+                                       const struct wl_buffer_layout *layout,
+                                       uint32_t plane_id);
 
 void
 egl_g3d_wl_drm_helper_unreference_buffer(void *user_data, void *buffer);

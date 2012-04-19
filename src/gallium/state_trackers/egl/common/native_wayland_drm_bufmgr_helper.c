@@ -14,19 +14,24 @@
 
 void *
 egl_g3d_wl_drm_helper_reference_buffer(void *user_data, uint32_t name,
-                                       int32_t width, int32_t height,
-                                       uint32_t stride, uint32_t format)
+                                       const struct wl_buffer_layout *layout,
+                                       uint32_t plane_id)
 {
    struct native_display *ndpy = user_data;
    struct pipe_resource templ;
    struct winsys_handle wsh;
    enum pipe_format pf;
+   uint32_t width, height, stride;
 
-   switch (format) {
-   case WL_DRM_FORMAT_ARGB8888:
+   width  = layout->width;
+   height = layout->height;
+   stride = layout->pitches[plane_id];
+
+   switch (layout->format) {
+   case WL_BUFFER_FORMAT_ARGB32:
       pf = PIPE_FORMAT_B8G8R8A8_UNORM;
       break;
-   case WL_DRM_FORMAT_XRGB8888:
+   case WL_BUFFER_FORMAT_XRGB32:
       pf = PIPE_FORMAT_B8G8R8X8_UNORM;
       break;
    default:

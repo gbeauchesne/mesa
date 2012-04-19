@@ -13,8 +13,8 @@ struct wayland_drm_callbacks {
 	int (*authenticate)(void *user_data, uint32_t id);
 
 	void *(*reference_buffer)(void *user_data, uint32_t name,
-				  int32_t width, int32_t height,
-				  uint32_t stride, uint32_t format);
+				  const struct wl_buffer_layout *layout,
+				  uint32_t plane_id);
 
 	void (*release_buffer)(void *user_data, void *buffer);
 };

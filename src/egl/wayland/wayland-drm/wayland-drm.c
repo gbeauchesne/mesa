@@ -149,10 +149,7 @@ drm_do_create_buffer(struct wl_client *client, struct wl_resource *resource,
 
 	buffer->driver_buffer =
 		drm->callbacks->reference_buffer(drm->user_data, name,
-						 layout->width, layout->height,
-						 layout->pitches[0],
-						 layout->format);
-
+						 layout, 0);
 	if (buffer->driver_buffer == NULL) {
 		wl_resource_post_error(resource,
 				       WL_DRM_ERROR_INVALID_NAME,
