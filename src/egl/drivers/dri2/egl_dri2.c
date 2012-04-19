@@ -992,6 +992,24 @@ dri2_create_image_khr_renderbuffer(_EGLDisplay *disp, _EGLContext *ctx,
    return &dri2_img->base;
 }
 
+static __DRIimage *
+dri2_invoke_create_image_from_name(struct dri2_egl_display *dpy,
+                                   int name, uint32_t offset,
+                                   const __DRIimageAttrs *attrs,
+                                   void *user_data)
+{
+    if (dpy->image->createImageFromName2)
+        return dpy->image->createImageFromName2(dpy->dri_screen,
+                   name, offset, attrs, user_data);
+
+    if (offset > 0)
+        return NULL;
+
+    return dpy->image->createImageFromName(dpy->dri_screen,
+               attrs->width, attrs->height, attrs->format, name,
+               attrs->pitch, user_data);
+}
+
 static _EGLImage *
 dri2_create_image_drm_name(_EGLDisplay *disp, _EGLContext *ctx,
 			   EGLint name,
@@ -1001,6 +1019,7 @@ dri2_create_image_drm_name(_EGLDisplay *disp, _EGLContext *ctx,
 {
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    struct dri2_egl_image *dri2_img;
+   __DRIimageAttrs imageAttrs;
 
    (void) ctx;
 
@@ -1015,20 +1034,22 @@ dri2_create_image_drm_name(_EGLDisplay *disp, _EGLContext *ctx,
       return NULL;
    }
 
-   dri2_img->dri_image =
-      dri2_dpy->image->createImageFromName(dri2_dpy->dri_screen,
-					   attrs->Width,
-					   attrs->Height,
-					   format,
-					   name,
-					   pitch,
-					   dri2_img);
+   imageAttrs.plane_id  = 0;
+   imageAttrs.format    = format;
+   imageAttrs.width     = attrs->Width;
+   imageAttrs.height    = attrs->Height;
+   imageAttrs.pitch     = pitch;
+   imageAttrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
+   dri2_img->dri_image  = dri2_invoke_create_image_from_name(
+       dri2_dpy,
+       name, 0,
+       &imageAttrs, dri2_img
+   );
    if (dri2_img->dri_image == NULL) {
       free(dri2_img);
       _eglError(EGL_BAD_ALLOC, "dri2_create_image_mesa_drm");
       return NULL;
    }
-
    return &dri2_img->base;
 }
 
@@ -1268,26 +1289,31 @@ dri2_wl_reference_buffer(void *user_data, uint32_t name,
 {
    _EGLDisplay *disp = user_data;
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
-   __DRIimage *image;
-   int dri_format;
+   __DRIimageAttrs imageAttrs;
+   int dri_format, cpp;
 
    switch (format) {
    case WL_DRM_FORMAT_ARGB8888:
       dri_format =__DRI_IMAGE_FORMAT_ARGB8888;
+      cpp = 4;
       break;
    case WL_DRM_FORMAT_XRGB8888:
       dri_format = __DRI_IMAGE_FORMAT_XRGB8888;
+      cpp = 4;
       break;
    default:
       return NULL;	   
    }
 
-   image = dri2_dpy->image->createImageFromName(dri2_dpy->dri_screen,
-						width, height, 
-						dri_format, name, stride / 4,
-						NULL);
-
-   return image;
+   imageAttrs.plane_id  = 0;
+   imageAttrs.format    = dri_format;
+   imageAttrs.width     = width;
+   imageAttrs.height    = height;
+   imageAttrs.pitch     = stride / cpp;
+   imageAttrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
+   return dri2_invoke_create_image_from_name(dri2_dpy,
+					     name, 0,
+					     &imageAttrs, NULL);
 }
 
 static void
