@@ -910,6 +910,11 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_FORMAT_R8           0x1006
 #define __DRI_IMAGE_FORMAT_RG88         0x1007
 
+/* Image structure: full picture or interlaced (top/bottom field) pictures */
+#define __DRI_IMAGE_STRUCTURE_FRAME     0x0000
+#define __DRI_IMAGE_STRUCTURE_TOP_FIELD 0x0001
+#define __DRI_IMAGE_STRUCTURE_BOTTOM_FIELD 0x0002
+
 #define __DRI_IMAGE_USE_SHARE		0x0001
 #define __DRI_IMAGE_USE_SCANOUT		0x0002
 #define __DRI_IMAGE_USE_CURSOR		0x0004
@@ -923,6 +928,7 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_ATTRIB_HANDLE	0x2001
 #define __DRI_IMAGE_ATTRIB_NAME		0x2002
 #define __DRI_IMAGE_ATTRIB_FORMAT	0x2003 /* available in versions 3+ */
+#define __DRI_IMAGE_ATTRIB_STRUCTURE	0x2004 /* available in versions 4+ */
 
 typedef struct __DRIimageRec          __DRIimage;
 typedef struct __DRIimageAttrsRec     __DRIimageAttrs;
@@ -933,6 +939,7 @@ struct __DRIimageAttrsRec {
     unsigned int        width;
     unsigned int        height;
     unsigned int        pitch;
+    unsigned int        structure;
 };
 
 struct __DRIimageExtensionRec {
