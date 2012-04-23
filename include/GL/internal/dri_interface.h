@@ -929,12 +929,15 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_ATTRIB_NAME		0x2002
 #define __DRI_IMAGE_ATTRIB_FORMAT	0x2003 /* available in versions 3+ */
 #define __DRI_IMAGE_ATTRIB_STRUCTURE	0x2004 /* available in versions 4+ */
+#define __DRI_IMAGE_ATTRIB_OFFSET	0x2005 /* available in versions 4+ */
+#define __DRI_IMAGE_ATTRIB_PLANE_ID	0x2006 /* available in versions 4+ */
 
 typedef struct __DRIimageRec          __DRIimage;
 typedef struct __DRIimageAttrsRec     __DRIimageAttrs;
 typedef struct __DRIimageExtensionRec __DRIimageExtension;
 
 struct __DRIimageAttrsRec {
+    unsigned int        plane_id;
     unsigned int        format;
     unsigned int        width;
     unsigned int        height;
@@ -988,7 +991,7 @@ struct __DRIimageExtensionRec {
      * \since 5
      */
     __DRIimage *(*createImageFromName2)(__DRIscreen *screen,
-                                        int name,
+                                        int name, unsigned int offset,
                                         const __DRIimageAttrs *attrs,
                                         void *loaderPrivate);
 };
