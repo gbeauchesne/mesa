@@ -236,6 +236,7 @@ intel_create_image_from_name2(__DRIscreen *screen,
     image->data = loaderPrivate;
     cpp = _mesa_get_format_bytes(image->format);
 
+    region_attrs.structure = attrs->structure;
     region_attrs.cpp       = cpp;
     region_attrs.width     = attrs->width;
     region_attrs.height    = attrs->height;
@@ -407,6 +408,9 @@ intel_query_image(__DRIimage *image, int attrib, int *value)
       return intel_region_flink(image->region, (uint32_t *) value);
    case __DRI_IMAGE_ATTRIB_FORMAT:
       *value = image->dri_format;
+      return true;
+   case __DRI_IMAGE_ATTRIB_STRUCTURE:
+      *value = image->region->structure;
       return true;
    default:
       return false;

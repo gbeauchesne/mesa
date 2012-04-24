@@ -171,9 +171,20 @@ gen7_update_texture_surface(struct gl_context *ctx, GLuint unit)
 
    gen7_set_surface_tiling(surf, intelObj->mt->region->tiling);
 
+   /* Interlaced surface
+    * XXX: mip mode filter must be set to MIPFILTER_NONE
+    */
+   switch (mt->region->structure) {
+   case __DRI_IMAGE_STRUCTURE_BOTTOM_FIELD:
+      surf->ss0.vert_line_stride_ofs = 1;
+      /* fall-through */
+   case __DRI_IMAGE_STRUCTURE_TOP_FIELD:
+      surf->ss0.vert_line_stride = 1;
+      height /= 2;
+      break;
+   }
+
    /* ss0 remaining fields:
-    * - vert_line_stride (exists on gen6 but we ignore it)
-    * - vert_line_stride_ofs (exists on gen6 but we ignore it)
     * - surface_array_spacing
     * - render_cache_read_write (exists on gen6 but ignored here)
     */

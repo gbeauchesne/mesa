@@ -655,15 +655,35 @@ brw_update_texture_surface( struct gl_context *ctx, GLuint unit )
    struct gl_sampler_object *sampler = _mesa_get_samplerobj(ctx, unit);
    const GLuint surf_index = SURF_INDEX_TEXTURE(unit);
    uint32_t *surf;
-   int width, height, depth;
+   int width, height, depth, vert_line_stride_ofs, vert_line_stride;
 
    intel_miptree_get_dimensions_for_image(firstImage, &width, &height, &depth);
+
+   /* Interlaced surface
+    * XXX: texture addrss control mode must be set to TEXCOORDMODE_CLAMP
+    * XXX: mip mode filter must be set to MIPFILTER_NONE
+    */
+   switch (mt->region->structure) {
+   case __DRI_IMAGE_STRUCTURE_BOTTOM_FIELD:
+      vert_line_stride_ofs = 1;
+      /* fall-through */
+   case __DRI_IMAGE_STRUCTURE_TOP_FIELD:
+      vert_line_stride = 1;
+      height /= 2;
+      break;
+   default:
+      vert_line_stride = 0;
+      vert_line_stride_ofs = 0;
+      break;
+   }
 
    surf = brw_state_batch(brw, AUB_TRACE_SURFACE_STATE,
 			  6 * 4, 32, &brw->wm.surf_offset[surf_index]);
 
    surf[0] = (translate_tex_target(tObj->Target) << BRW_SURFACE_TYPE_SHIFT |
 	      BRW_SURFACE_MIPMAPLAYOUT_BELOW << BRW_SURFACE_MIPLAYOUT_SHIFT |
+	      vert_line_stride << BRW_SURFACE_VERT_LINE_STRIDE_SHIFT |
+	      vert_line_stride_ofs << BRW_SURFACE_VERT_LINE_STRIDE_OFS_SHIFT |
 	      BRW_SURFACE_CUBEFACE_ENABLES |
 	      (translate_tex_format(mt->format,
 				    firstImage->InternalFormat,

@@ -40,6 +40,7 @@
 
 #include "main/mtypes.h"
 #include "intel_bufmgr.h"
+#include "dri_util.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -65,6 +66,7 @@ struct intel_region
    GLuint width;    /**< in pixels */
    GLuint height;   /**< in pixels */
    GLuint pitch;    /**< in pixels */
+   GLuint structure; /**< Picture structure. See __DRI_IMAGE_STRUCTURE_xxx */
    GLubyte *map;    /**< only non-NULL when region is actually mapped */
    GLuint map_refcount;  /**< Reference count for mapping */
 
@@ -79,6 +81,7 @@ struct intel_region
  * See. intel_region_alloc_for_handle().
  */
 struct intel_region_attributes {
+   GLuint structure;    /**< picture structure. See __DRI_IMAGE_STRUCTURE_xxx */
    GLuint cpp;          /**< bytes per pixel */
    GLuint width;        /**< in pixels */
    GLuint height;       /**< in pixels */
@@ -109,6 +112,7 @@ intel_region_alloc_for_handle(struct intel_screen *screen,
 {
     struct intel_region_attributes attrs;
 
+    attrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
     attrs.cpp       = cpp;
     attrs.width     = width;
     attrs.height    = height;

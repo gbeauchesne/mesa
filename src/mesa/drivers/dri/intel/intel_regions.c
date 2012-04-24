@@ -258,6 +258,7 @@ intel_region_alloc_internal(struct intel_screen *screen,
       return region;
 
    region->plane_id = 0;
+   region->structure = attrs->structure;
    region->cpp = attrs->cpp;
    region->width = attrs->width;
    region->height = attrs->height;
@@ -292,6 +293,7 @@ intel_region_alloc(struct intel_screen *screen,
    if (buffer == NULL)
       return NULL;
 
+   attrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
    attrs.cpp       = cpp;
    attrs.width     = width;
    attrs.height    = height;
@@ -324,6 +326,9 @@ static inline bool
 intel_region_validate_attributes(const struct intel_region *region,
                                  const struct intel_region_attributes *attrs)
 {
+    /* Don't check for picture structure since interlaced contents are
+     * handled at rendering time, so regions remain compatible
+     */
     return (region->cpp    == attrs->cpp    &&
             region->width  == attrs->width  &&
             region->height == attrs->height &&
