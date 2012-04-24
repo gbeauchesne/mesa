@@ -190,6 +190,7 @@ gen7_update_texture_surface(struct gl_context *ctx, GLuint unit)
     */
 
    surf->ss1.base_addr = intelObj->mt->region->bo->offset; /* reloc */
+   surf->ss1.base_addr += intelObj->mt->region->offset;
 
    surf->ss2.width = width - 1;
    surf->ss2.height = height - 1;

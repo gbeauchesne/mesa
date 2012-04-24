@@ -236,6 +236,8 @@ intel_create_image_from_name2(__DRIscreen *screen,
     image->data = loaderPrivate;
     cpp = _mesa_get_format_bytes(image->format);
 
+    region_attrs.plane_id  = attrs->plane_id;
+    region_attrs.offset    = offset;
     region_attrs.structure = attrs->structure;
     region_attrs.cpp       = cpp;
     region_attrs.width     = attrs->width;
@@ -411,6 +413,12 @@ intel_query_image(__DRIimage *image, int attrib, int *value)
       return true;
    case __DRI_IMAGE_ATTRIB_STRUCTURE:
       *value = image->region->structure;
+      return true;
+   case __DRI_IMAGE_ATTRIB_OFFSET:
+      *value = image->region->offset;
+      return true;
+   case __DRI_IMAGE_ATTRIB_PLANE_ID:
+      *value = image->region->plane_id;
       return true;
    default:
       return false;

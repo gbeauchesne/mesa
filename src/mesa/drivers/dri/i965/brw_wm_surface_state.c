@@ -692,6 +692,7 @@ brw_update_texture_surface( struct gl_context *ctx, GLuint unit )
 	       BRW_SURFACE_FORMAT_SHIFT));
 
    surf[1] = intelObj->mt->region->bo->offset; /* reloc */
+   surf[1] += intelObj->mt->region->offset;
 
    surf[2] = ((intelObj->_MaxLevel - tObj->BaseLevel) << BRW_SURFACE_LOD_SHIFT |
 	      (width - 1) << BRW_SURFACE_WIDTH_SHIFT |

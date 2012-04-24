@@ -257,7 +257,8 @@ intel_region_alloc_internal(struct intel_screen *screen,
    if (region == NULL)
       return region;
 
-   region->plane_id = 0;
+   region->plane_id = attrs->plane_id;
+   region->offset = attrs->offset;
    region->structure = attrs->structure;
    region->cpp = attrs->cpp;
    region->width = attrs->width;
@@ -293,6 +294,8 @@ intel_region_alloc(struct intel_screen *screen,
    if (buffer == NULL)
       return NULL;
 
+   attrs.plane_id  = 0;
+   attrs.offset    = 0;
    attrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
    attrs.cpp       = cpp;
    attrs.width     = width;
@@ -345,7 +348,7 @@ intel_region_alloc_for_handle2(struct intel_screen *screen,
    int ret;
    uint32_t bit_6_swizzle, tiling;
 
-   region = intel_region_hash_lookup(screen->named_regions, handle, 0);
+   region = intel_region_hash_lookup(screen->named_regions, handle, attrs->plane_id);
    if (region != NULL) {
       dummy = NULL;
       if (!intel_region_validate_attributes(region, attrs)) {

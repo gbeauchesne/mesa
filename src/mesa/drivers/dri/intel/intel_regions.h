@@ -60,6 +60,7 @@ struct intel_buffer_object;
 struct intel_region
 {
    drm_intel_bo *bo;  /**< buffer manager's buffer */
+   uint32_t offset; /**< Offset (in bytes) to the base bo */
    GLuint refcount; /**< Reference count for region */
    GLuint plane_id; /**< Plane id out of 3 (range: 0..2) */
    GLuint cpp;      /**< bytes per pixel */
@@ -81,6 +82,8 @@ struct intel_region
  * See. intel_region_alloc_for_handle().
  */
 struct intel_region_attributes {
+   GLuint plane_id;     /**< plane id */
+   uint32_t offset;     /**< Offset (in bytes) to the base bo */
    GLuint structure;    /**< picture structure. See __DRI_IMAGE_STRUCTURE_xxx */
    GLuint cpp;          /**< bytes per pixel */
    GLuint width;        /**< in pixels */
@@ -112,6 +115,8 @@ intel_region_alloc_for_handle(struct intel_screen *screen,
 {
     struct intel_region_attributes attrs;
 
+    attrs.plane_id  = 0;
+    attrs.offset    = 0;
     attrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
     attrs.cpp       = cpp;
     attrs.width     = width;
