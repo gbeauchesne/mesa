@@ -1073,10 +1073,11 @@ dri2_create_image_mesa_drm_buffer(_EGLDisplay *disp, _EGLContext *ctx,
       return NULL;
    }
 
+   pitch = attrs.DRMBufferStrideMESA;
    switch (attrs.DRMBufferFormatMESA) {
    case EGL_DRM_BUFFER_FORMAT_ARGB32_MESA:
       format = __DRI_IMAGE_FORMAT_ARGB8888;
-      pitch = attrs.DRMBufferStrideMESA;
+      pitch /= 4;
       break;
    default:
       _eglError(EGL_BAD_PARAMETER,
