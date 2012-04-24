@@ -482,7 +482,7 @@ intel_image_write(__DRIimage *image, const void *buf, size_t count)
 }
 
 static struct __DRIimageExtensionRec intelImageExtension = {
-    { __DRI_IMAGE, 4 },
+    { __DRI_IMAGE, 5 },
     intel_create_image_from_name,
     intel_create_image_from_renderbuffer,
     intel_destroy_image,
