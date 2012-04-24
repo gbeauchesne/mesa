@@ -73,6 +73,17 @@ struct intel_region
    struct intel_screen *screen;
 };
 
+/**
+ * A helper structure that defines attributes useful for importing buffers.
+ * See. intel_region_alloc_for_handle().
+ */
+struct intel_region_attributes {
+   GLuint cpp;          /**< bytes per pixel */
+   GLuint width;        /**< in pixels */
+   GLuint height;       /**< in pixels */
+   GLuint pitch;        /**< in pixels */
+};
+
 
 /* Allocate a refcounted region.  Pointers to regions should only be
  * copied by calling intel_reference_region().
@@ -83,11 +94,26 @@ struct intel_region *intel_region_alloc(struct intel_screen *screen,
                                         GLuint height,
 					bool expect_accelerated_upload);
 
+/* Extended version of intel_region_alloc_for_handle() with attributes */
 struct intel_region *
+intel_region_alloc_for_handle2(struct intel_screen *screen,
+			       unsigned int handle, const char *name,
+			       const struct intel_region_attributes *attrs);
+
+static inline struct intel_region *
 intel_region_alloc_for_handle(struct intel_screen *screen,
 			      GLuint cpp,
 			      GLuint width, GLuint height, GLuint pitch,
-			      unsigned int handle, const char *name);
+			      unsigned int handle, const char *name)
+{
+    struct intel_region_attributes attrs;
+
+    attrs.cpp       = cpp;
+    attrs.width     = width;
+    attrs.height    = height;
+    attrs.pitch     = pitch;
+    return intel_region_alloc_for_handle2(screen, handle, name, &attrs);
+}
 
 bool
 intel_region_flink(struct intel_region *region, uint32_t *name);

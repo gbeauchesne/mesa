@@ -160,8 +160,7 @@ intel_region_unmap(struct intel_context *intel, struct intel_region *region)
 
 static struct intel_region *
 intel_region_alloc_internal(struct intel_screen *screen,
-			    GLuint cpp,
-			    GLuint width, GLuint height, GLuint pitch,
+			    const struct intel_region_attributes *attrs,
 			    uint32_t tiling, drm_intel_bo *buffer)
 {
    struct intel_region *region;
@@ -170,10 +169,10 @@ intel_region_alloc_internal(struct intel_screen *screen,
    if (region == NULL)
       return region;
 
-   region->cpp = cpp;
-   region->width = width;
-   region->height = height;
-   region->pitch = pitch;
+   region->cpp = attrs->cpp;
+   region->width = attrs->width;
+   region->height = attrs->height;
+   region->pitch = attrs->pitch;
    region->refcount = 1;
    region->bo = buffer;
    region->tiling = tiling;
@@ -193,6 +192,7 @@ intel_region_alloc(struct intel_screen *screen,
    unsigned long flags = 0;
    unsigned long aligned_pitch;
    struct intel_region *region;
+   struct intel_region_attributes attrs;
 
    if (expect_accelerated_upload)
       flags |= BO_ALLOC_FOR_RENDER;
@@ -203,8 +203,11 @@ intel_region_alloc(struct intel_screen *screen,
    if (buffer == NULL)
       return NULL;
 
-   region = intel_region_alloc_internal(screen, cpp, width, height,
-                                        aligned_pitch / cpp, tiling, buffer);
+   attrs.cpp       = cpp;
+   attrs.width     = width;
+   attrs.height    = height;
+   attrs.pitch     = aligned_pitch / cpp;
+   region = intel_region_alloc_internal(screen, &attrs, tiling, buffer);
    if (region == NULL) {
       drm_intel_bo_unreference(buffer);
       return NULL;
@@ -229,11 +232,20 @@ intel_region_flink(struct intel_region *region, uint32_t *name)
    return true;
 }
 
+static inline bool
+intel_region_validate_attributes(const struct intel_region *region,
+                                 const struct intel_region_attributes *attrs)
+{
+    return (region->cpp    == attrs->cpp    &&
+            region->width  == attrs->width  &&
+            region->height == attrs->height &&
+            region->pitch  == attrs->pitch);
+}
+
 struct intel_region *
-intel_region_alloc_for_handle(struct intel_screen *screen,
-			      GLuint cpp,
-			      GLuint width, GLuint height, GLuint pitch,
-			      GLuint handle, const char *name)
+intel_region_alloc_for_handle2(struct intel_screen *screen,
+			       unsigned int handle, const char *name,
+			       const struct intel_region_attributes *attrs)
 {
    struct intel_region *region, *dummy;
    drm_intel_bo *buffer;
@@ -243,8 +255,7 @@ intel_region_alloc_for_handle(struct intel_screen *screen,
    region = _mesa_HashLookup(screen->named_regions, handle);
    if (region != NULL) {
       dummy = NULL;
-      if (region->width != width || region->height != height ||
-	  region->cpp != cpp || region->pitch != pitch) {
+      if (!intel_region_validate_attributes(region, attrs)) {
 	 fprintf(stderr,
 		 "Region for name %d already exists but is not compatible\n",
 		 handle);
@@ -265,8 +276,7 @@ intel_region_alloc_for_handle(struct intel_screen *screen,
       return NULL;
    }
 
-   region = intel_region_alloc_internal(screen, cpp,
-					width, height, pitch, tiling, buffer);
+   region = intel_region_alloc_internal(screen, attrs, tiling, buffer);
    if (region == NULL) {
       drm_intel_bo_unreference(buffer);
       return NULL;
