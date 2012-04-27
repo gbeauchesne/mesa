@@ -1116,6 +1116,54 @@ dri2_create_image_mesa_drm_buffer(_EGLDisplay *disp, _EGLContext *ctx,
 }
 
 #ifdef HAVE_WAYLAND_PLATFORM
+struct wl_buffer_layout_map {
+    unsigned int        num_planes;
+    struct {
+        unsigned int    format;
+        unsigned char   cpp;
+        unsigned char   w_shift;
+        unsigned char   h_shift;   
+    }                   planes[3];
+};
+
+static const struct wl_buffer_layout_map wl_buffer_layout_map_argb8888 = {
+    1, { { __DRI_IMAGE_FORMAT_ARGB8888, 4, 0, 0 }, } };
+static const struct wl_buffer_layout_map wl_buffer_layout_map_xrgb8888 = {
+    1, { { __DRI_IMAGE_FORMAT_XRGB8888, 4, 0, 0 }, } };
+
+static int
+dri2_image_attrs_from_wl_buffer_layout(__DRIimageAttrs *attrs,
+                                       const struct wl_buffer_layout *layout,
+                                       unsigned int plane_id)
+{
+    const struct wl_buffer_layout_map *m;
+
+    switch (layout->format) {
+    case WL_BUFFER_FORMAT_ARGB8888:
+        m = &wl_buffer_layout_map_argb8888;
+        break;
+    case WL_BUFFER_FORMAT_XRGB8888:
+        m = &wl_buffer_layout_map_xrgb8888;
+        break;
+    default:
+        m = NULL;
+        break;
+    }
+    if (!m)
+        return 0;
+
+    if (plane_id >= m->num_planes)
+        return 0;
+
+    attrs->plane_id  = plane_id;
+    attrs->format    = m->planes[plane_id].format;
+    attrs->width     = layout->width >> m->planes[plane_id].w_shift;
+    attrs->height    = layout->height >> m->planes[plane_id].h_shift;
+    attrs->pitch     = layout->pitches[plane_id] / m->planes[plane_id].cpp;
+    attrs->structure = __DRI_IMAGE_STRUCTURE_FRAME;
+    return 1;
+}
+
 static _EGLImage *
 dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
 				    EGLClientBuffer _buffer,
@@ -1318,31 +1366,9 @@ dri2_wl_reference_buffer(void *user_data, uint32_t name,
    _EGLDisplay *disp = user_data;
    struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
    __DRIimageAttrs imageAttrs;
-   int dri_format, cpp, width, height, stride;
 
-   width  = layout->width;
-   height = layout->height;
-   stride = layout->pitches[plane_id];
-
-   switch (layout->format) {
-   case WL_BUFFER_FORMAT_ARGB8888:
-      dri_format = __DRI_IMAGE_FORMAT_ARGB8888;
-      cpp = 4;
-      break;
-   case WL_BUFFER_FORMAT_XRGB8888:
-      dri_format = __DRI_IMAGE_FORMAT_XRGB8888;
-      cpp = 4;
-      break;
-   default:
-      return NULL;	   
-   }
-
-   imageAttrs.plane_id  = plane_id;
-   imageAttrs.format    = dri_format;
-   imageAttrs.width     = width;
-   imageAttrs.height    = height;
-   imageAttrs.pitch     = stride / cpp;
-   imageAttrs.structure = __DRI_IMAGE_STRUCTURE_FRAME;
+   if (!dri2_image_attrs_from_wl_buffer_layout(&imageAttrs, layout, plane_id))
+      return NULL;
    return dri2_invoke_create_image_from_name(dri2_dpy,
 					     name, layout->offsets[plane_id],
 					     &imageAttrs, NULL);
