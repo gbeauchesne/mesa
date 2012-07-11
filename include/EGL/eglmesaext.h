@@ -153,6 +153,15 @@ typedef EGLBoolean (EGLAPIENTRYP PFNEGLSWAPBUFFERSREGIONNOK) (EGLDisplay dpy, EG
 #define EGL_NATIVE_BUFFER_ANDROID       0x3140  /* eglCreateImageKHR target */
 #endif
 
+#ifndef EGL_INTEL_VA_pixel_buffer
+#define EGL_INTEL_VA_pixel_buffer 1
+
+#define EGL_VA_PIXEL_BUFFER_INTEL       0x31DB /* eglCreateImageKHR target */
+#define EGL_VA_BUFFER_PLANE_INTEL       0x31D6 /* eglCreateImageKHR attribute */
+#define EGL_VA_BUFFER_STRUCTURE_INTEL   0x3080 /* eglCreateImageKHR attribute */
+#define EGL_VA_PICTURE_STRUCTURE_INTEL  0x31DA /* eglCreateImageKHR attribute */
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -53,6 +53,10 @@ struct _egl_image_attribs
 
    /* EGL_WL_bind_wayland_display */
    EGLint PlaneWL;
+
+   /* EGL_INTEL_VA_pixel_buffer */
+   EGLint VABufferStructureINTEL;
+   EGLint VAPictureStructureINTEL;
 };
 
 /**

@@ -595,6 +595,11 @@ AC_ARG_ENABLE([va],
          [enable va library @<:@default=auto@:>@])],
    [enable_va="$enableval"],
    [enable_va=auto])
+AC_ARG_ENABLE([vaapi],
+   [AS_HELP_STRING([--enable-vaapi-egl],
+         [enable VA/EGL interop @<:@default=auto@:>@])],
+   [enable_vaapi_egl="$enableval"],
+   [enable_vaapi_egl=yes])
 AC_ARG_ENABLE([opencl],
    [AS_HELP_STRING([--enable-opencl],
          [enable OpenCL library @<:@default=no@:>@])],
@@ -1426,6 +1431,27 @@ if test "x$enable_va" = xyes; then
 fi
 
 dnl
+dnl VA-API / EGL interop
+dnl
+
+if test "x$enable_egl" != xyes; then
+    enable_vaapi_egl="no"
+fi
+if test "x$enable_vaapi_egl" = xyes; then
+    PKG_CHECK_MODULES([LIBVA_EGL], [libva-egl], [:], [enable_vaapi_egl="no"])
+fi
+if test "x$enable_vaapi_egl" = xyes; then
+    saved_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$CPPFLAGS $LIBVA_EGL_CFLAGS"
+    AC_CHECK_HEADERS([va/va_egl.h], [:], [enable_vaapi_egl="no"])
+    AC_CHECK_HEADERS([va/va_backend_egl.h], [:], [enable_vaapi_egl="no"])
+    CPPFLAGS="$saved_CPPFLAGS"
+fi
+if test "x$enable_vaapi_egl" = xyes; then
+    DEFINES="$DEFINES -DHAVE_VA_EGL_INTEROP"
+fi
+
+dnl
 dnl OpenCL configuration
 dnl
 
@@ -2069,6 +2095,7 @@ if test "$enable_egl" = yes; then
     else
         echo "        EGL drivers:    $egl_drivers"
     fi
+    echo "        VA/EGL interop:  $enable_vaapi_egl"
 fi
 
 echo ""

@@ -1145,6 +1145,151 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
 }
 #endif
 
+#ifdef HAVE_VA_EGL_INTEROP
+static const struct va_dri_image_descriptor {
+   uint32_t format;
+   uint32_t dri_fourcc;
+   int nplanes;
+} va_dri_image_descriptors[] = {
+   { VA_EGL_PIXEL_FORMAT_ARGB8888, __DRI_IMAGE_FOURCC_ARGB8888, 1 },
+   { VA_EGL_PIXEL_FORMAT_XRGB8888, __DRI_IMAGE_FOURCC_XRGB8888, 1 },
+   { VA_EGL_PIXEL_FORMAT_ABGR8888, __DRI_IMAGE_FOURCC_ABGR8888, 1 },
+   { VA_EGL_PIXEL_FORMAT_NV12, __DRI_IMAGE_FOURCC_NV12, 2 },
+   { VA_EGL_PIXEL_FORMAT_YUV410P, __DRI_IMAGE_FOURCC_YUV410, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV411P, __DRI_IMAGE_FOURCC_YUV411, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV420P, __DRI_IMAGE_FOURCC_YUV420, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV422P, __DRI_IMAGE_FOURCC_YUV422, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV444P, __DRI_IMAGE_FOURCC_YUV444, 3 },
+};
+
+struct va_dri_image {
+   __DRIimage *image;
+   void (*destroy_func)(__DRIimage *image);
+   const struct va_dri_image_descriptor *desc;
+};
+
+static void
+dri2_va_destroy_image(struct va_dri_image *img)
+{
+   if (img)
+      return;
+   if (img->destroy_func)
+      img->destroy_func(img->image);
+   free(img);
+}
+
+static struct va_dri_image *
+dri2_va_create_image(_EGLDisplay *disp, struct va_egl_client_buffer *buffer)
+{
+   struct dri2_egl_display * const dri2_dpy = dri2_egl_display(disp);
+   struct va_dri_image *img;
+   int i, handle, pitches[3], offsets[3];
+
+   for (i = 0; i < ARRAY_SIZE(va_dri_image_descriptors); i++) {
+      if (va_dri_image_descriptors[i].format == buffer->format)
+         break;
+   }
+   if (i == ARRAY_SIZE(va_dri_image_descriptors)) {
+      _eglLog(_EGL_DEBUG, "DRI2-VA: failed to validate pixel format %d",
+              buffer->format);
+      return NULL;
+   }
+
+   img = malloc(sizeof(*img));
+   if (!img)
+      return NULL;
+   img->destroy_func = dri2_dpy->image->destroyImage;
+   img->desc = &va_dri_image_descriptors[i];
+
+   handle = buffer->handle;
+   for (i = 0; i < buffer->num_planes; i++) {
+      pitches[i] = buffer->pitches[i];
+      offsets[i] = buffer->offsets[i];
+   }
+   for (; i < ARRAY_SIZE(pitches); i++) {
+      pitches[i] = 0;
+      offsets[i] = 0;
+   }
+   img->image = dri2_dpy->image->createImageFromNames(
+      dri2_dpy->dri_screen, buffer->width, buffer->height,
+      img->desc->dri_fourcc, &handle, 1, pitches, offsets,
+      NULL);
+   if (img->image)
+      return img;
+
+   free(img);
+   return NULL;
+}
+
+static _EGLImage *
+dri2_create_image_va_pixel_buffer(_EGLDisplay *disp, _EGLContext *ctx,
+                                  EGLClientBuffer _buffer,
+                                  const EGLint *attr_list)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   struct va_egl_client_buffer *buffer = _buffer;
+   struct va_dri_image *img;
+   __DRIimage *dri_image;
+   _EGLImageAttribs attrs;
+   EGLint plane, structure, err;
+
+   if (!buffer || buffer->version != VA_EGL_CLIENT_BUFFER_VERSION) {
+      _eglError(EGL_BAD_PARAMETER, "DRI2-VA: unsupported EGLClientBuffer");
+      return NULL;
+   }
+
+   err = _eglParseImageAttribList(&attrs, disp, attr_list);
+   if (err != EGL_SUCCESS) {
+      _eglError(EGL_BAD_PARAMETER,
+                "DRI2-VA: failed to parse eglCreateImageKHR() attributes");
+      return NULL;
+   }
+
+   plane = attrs.PlaneWL;
+   if (plane < 0) {
+      _eglError(EGL_BAD_PARAMETER, "DRI2-VA: got negative plane value");
+      return NULL;
+   }
+
+   structure = attrs.VABufferStructureINTEL;
+   if (structure && structure != buffer->structure) {
+      _eglError(EGL_BAD_PARAMETER,
+                "DRI2-VA: buffer structure coercition is not supported yet");
+      return NULL;
+   }
+
+   structure = attrs.VAPictureStructureINTEL;
+   if (structure != VA_EGL_PICTURE_STRUCTURE_FRAME) {
+      _eglError(EGL_BAD_PARAMETER,
+                "DRI2-VA: interlaced picture structure is not supported yet");
+      return NULL;
+   }
+
+   img = buffer->private_data;
+   if (!img) {
+      img = dri2_va_create_image(disp, buffer);
+      if (!img) {
+         _eglError(EGL_BAD_ALLOC, "DRI2-VA: could not reference VA buffer");
+         return NULL;
+      }
+      buffer->private_data = img;
+      buffer->destroy_private_data = (void (*)(void *))dri2_va_destroy_image;
+   }
+
+   if (plane >= img->desc->nplanes) {
+      _eglError(EGL_BAD_PARAMETER, "DRI2-VA: invalid plane index");
+      return NULL;
+   }
+
+   dri_image = dri2_dpy->image->fromPlanar(img->image, plane, NULL);
+   if (!dri_image) {
+      _eglError(EGL_BAD_ALLOC, "DRI2-VA: could not create sub-buffer");
+      return NULL;
+   }
+   return dri2_create_image(disp, dri_image);
+}
+#endif
+
 _EGLImage *
 dri2_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
 		      _EGLContext *ctx, EGLenum target,
@@ -1160,6 +1305,10 @@ dri2_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
 #ifdef HAVE_WAYLAND_PLATFORM
    case EGL_WAYLAND_BUFFER_WL:
       return dri2_create_image_wayland_wl_buffer(disp, ctx, buffer, attr_list);
+#endif
+#ifdef HAVE_VA_EGL_INTEROP
+   case EGL_VA_PIXEL_BUFFER_INTEL:
+      return dri2_create_image_va_pixel_buffer(disp, ctx, buffer, attr_list);
 #endif
    default:
       _eglError(EGL_BAD_PARAMETER, "dri2_create_image_khr");

@@ -93,6 +93,14 @@ _eglParseImageAttribList(_EGLImageAttribs *attrs, _EGLDisplay *dpy,
          attrs->PlaneWL = val;
          break;
 
+      /* EGL_INTEL_VA_pixel_buffer */
+      case EGL_VA_BUFFER_STRUCTURE_INTEL:
+         attrs->VABufferStructureINTEL = val;
+         break;
+      case EGL_VA_PICTURE_STRUCTURE_INTEL:
+         attrs->VAPictureStructureINTEL = val;
+         break;
+
       default:
          /* unknown attrs are ignored */
          break;
