@@ -1175,6 +1175,157 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
 }
 #endif
 
+#ifdef HAVE_VA_EGL_INTEROP
+/* Ensure the DRIimage is attached to the VA/EGL client buffer */
+static __DRIimage *
+dri2_va_reference_buffer(_EGLDisplay *disp, struct va_egl_client_buffer *buffer)
+{
+   struct dri2_egl_display * const dri2_dpy = dri2_egl_display(disp);
+   int format, stride;
+
+   switch (buffer->format) {
+   case VA_EGL_PIXEL_FORMAT_ARGB8888:
+      format = __DRI_IMAGE_FORMAT_ARGB8888;
+      stride = buffer->pitches[0] / 4;
+      break;
+   case VA_EGL_PIXEL_FORMAT_XRGB8888:
+      format = __DRI_IMAGE_FORMAT_XRGB8888;
+      stride = buffer->pitches[0] / 4;
+      break;
+   case VA_EGL_PIXEL_FORMAT_ABGR8888:
+      format = __DRI_IMAGE_FORMAT_ABGR8888;
+      stride = buffer->pitches[0] / 4;
+      break;
+   case VA_EGL_PIXEL_FORMAT_NV12:
+   case VA_EGL_PIXEL_FORMAT_YUV410P:
+   case VA_EGL_PIXEL_FORMAT_YUV411P:
+   case VA_EGL_PIXEL_FORMAT_YUV420P:
+   case VA_EGL_PIXEL_FORMAT_YUV422P:
+   case VA_EGL_PIXEL_FORMAT_YUV444P:
+      format = __DRI_IMAGE_FORMAT_NONE;
+      stride = buffer->pitches[0];
+      break;
+   default:
+      _eglLog(_EGL_DEBUG, "DRI2-VA: failed to validate pixel format %d",
+              buffer->format);
+      return NULL;
+   }
+   return dri2_dpy->image->createImageFromName(dri2_dpy->dri_screen,
+                                               buffer->width,
+                                               buffer->height,
+                                               format,
+                                               buffer->handle,
+                                               stride,
+                                               NULL);
+}
+
+static _EGLImage *
+dri2_create_image_va_pixel_buffer(_EGLDisplay *disp, _EGLContext *ctx,
+                                  EGLClientBuffer _buffer,
+                                  const EGLint *attr_list)
+{
+   struct dri2_egl_display *dri2_dpy = dri2_egl_display(disp);
+   struct va_egl_client_buffer *buffer = _buffer;
+   const struct dri_image_descriptor *desc;
+   __DRIimage *dri_image;
+   _EGLImageAttribs attrs;
+   EGLint plane, width, height, stride, cpp, offset, err;
+   uint32_t structure, format;
+
+   if (!buffer || buffer->version != VA_EGL_CLIENT_BUFFER_VERSION) {
+      _eglError(EGL_BAD_PARAMETER, "DRI2-VA: unsupported EGLClientBuffer");
+      return NULL;
+   }
+
+   err = _eglParseImageAttribList(&attrs, disp, attr_list);
+   if (err != EGL_SUCCESS) {
+      _eglError(EGL_BAD_PARAMETER,
+                "DRI2-VA: failed to parse eglCreateImageKHR() attributes");
+      return NULL;
+   }
+
+   plane = attrs.PlaneWL;
+   if (plane < 0) {
+      _eglError(EGL_BAD_PARAMETER, "DRI2-VA: got negative plane value");
+      return NULL;
+   }
+
+   structure = attrs.VABufferStructureINTEL;
+   if (structure && structure != buffer->structure) {
+      _eglError(EGL_BAD_PARAMETER,
+                "DRI2-VA: buffer structure coercition is not supported yet");
+      return NULL;
+   }
+
+   structure = attrs.VAPictureStructureINTEL;
+   if (structure != VA_EGL_PICTURE_STRUCTURE_FRAME) {
+      _eglError(EGL_BAD_PARAMETER,
+                "DRI2-VA: interlaced picture structure is not supported yet");
+      return NULL;
+   }
+
+   dri_image = buffer->private_data;
+   if (!dri_image) {
+      dri_image = dri2_va_reference_buffer(disp, buffer);
+      if (!dri_image) {
+         _eglError(EGL_BAD_ALLOC, "DRI2-VA: could not reference VA buffer");
+         return NULL;
+      }
+      buffer->private_data = dri_image;
+      buffer->destroy_private_data =
+         (void (*)(void *))dri2_dpy->image->destroyImage;
+   }
+
+   switch (buffer->format) {
+   case VA_EGL_PIXEL_FORMAT_ARGB8888:
+      desc = &dri_image_desc_ARGB8888;
+      break;
+   case VA_EGL_PIXEL_FORMAT_XRGB8888:
+      desc = &dri_image_desc_XRGB8888;
+      break;
+   case VA_EGL_PIXEL_FORMAT_NV12:
+      desc = &dri_image_desc_NV12;
+      break;
+   case VA_EGL_PIXEL_FORMAT_YUV420P:
+      desc = &dri_image_desc_YUV420;
+      break;
+   case VA_EGL_PIXEL_FORMAT_YUV422P:
+      desc = &dri_image_desc_YUV422;
+      break;
+   case VA_EGL_PIXEL_FORMAT_YUV444P:
+      desc = &dri_image_desc_YUV444;
+      break;
+   default:
+      desc = NULL;
+      break;
+   }
+   if (!desc) {
+      _eglError(EGL_BAD_PARAMETER, "DRI2-VA: unsupported pixel format");
+      return NULL;
+   }
+
+   if (plane >= desc->nplanes) {
+      _eglError(EGL_BAD_PARAMETER, "DRI2-VA: invalid plane index");
+      return NULL;
+   }
+
+   format = desc->planes[plane].dri_format;
+   width  = buffer->width >> desc->planes[plane].width_shift;
+   height = buffer->height >> desc->planes[plane].height_shift;
+   stride = buffer->pitches[plane];
+   cpp    = desc->planes[plane].cpp;
+   offset = buffer->offsets[plane];
+
+   dri_image = dri2_dpy->image->createSubImage(dri_image, width, height,format,
+                                               offset, stride / cpp, NULL);
+   if (!dri_image) {
+      _eglError(EGL_BAD_ALLOC, "DRI2-VA: could not create sub-buffer");
+      return NULL;
+   }
+   return dri2_create_image(disp, dri_image);
+}
+#endif
+
 _EGLImage *
 dri2_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
 		      _EGLContext *ctx, EGLenum target,
@@ -1190,6 +1341,10 @@ dri2_create_image_khr(_EGLDriver *drv, _EGLDisplay *disp,
 #ifdef HAVE_WAYLAND_PLATFORM
    case EGL_WAYLAND_BUFFER_WL:
       return dri2_create_image_wayland_wl_buffer(disp, ctx, buffer, attr_list);
+#endif
+#ifdef HAVE_VA_EGL_INTEROP
+   case EGL_VA_PIXEL_BUFFER_INTEL:
+      return dri2_create_image_va_pixel_buffer(disp, ctx, buffer, attr_list);
 #endif
    default:
       _eglError(EGL_BAD_PARAMETER, "dri2_create_image_khr");
