@@ -1437,6 +1437,21 @@ dri2_query_wayland_buffer_wl(_EGLDriver *drv, _EGLDisplay *disp,
    case EGL_TEXTURE_FORMAT:
       *value = format->components;
       return EGL_TRUE;
+   case EGL_TEXTURE_STRUCTURE_WL:
+      switch (buffer->picture_structure) {
+      case WL_DRM_PICTURE_STRUCTURE_FRAME:
+         *value = EGL_TEXTURE_STRUCTURE_FRAME_WL;
+         break;
+      case WL_DRM_PICTURE_STRUCTURE_TOP_FIELD:
+         *value = EGL_TEXTURE_STRUCTURE_TOP_FIELD_WL;
+         break;
+      case WL_DRM_PICTURE_STRUCTURE_BOTTOM_FIELD:
+         *value = EGL_TEXTURE_STRUCTURE_BOTTOM_FIELD_WL;
+         break;
+      default:
+         return EGL_FALSE;
+      }
+      return EGL_TRUE;
    case EGL_WIDTH:
       *value = buffer->buffer.width;
       break;
