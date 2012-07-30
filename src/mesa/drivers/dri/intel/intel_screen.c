@@ -188,7 +188,7 @@ intel_allocate_image(int dri_format, void *loaderPrivate)
     image->dri_format = dri_format;
     image->offset = 0;
 
-    switch (dri_format) {
+    switch (dri_format & __DRI_IMAGE_FORMAT_MASK) {
     case __DRI_IMAGE_FORMAT_RGB565:
        image->format = MESA_FORMAT_RGB565;
        break;
@@ -356,7 +356,7 @@ intel_query_image(__DRIimage *image, int attrib, int *value)
    case __DRI_IMAGE_ATTRIB_NAME:
       return intel_region_flink(image->region, (uint32_t *) value);
    case __DRI_IMAGE_ATTRIB_FORMAT:
-      *value = image->dri_format;
+      *value = image->dri_format & __DRI_IMAGE_FORMAT_MASK;
       return true;
    case __DRI_IMAGE_ATTRIB_WIDTH:
       *value = image->region->width;
@@ -468,7 +468,7 @@ intel_create_sub_image(__DRIimage *parent,
 }
 
 static struct __DRIimageExtensionRec intelImageExtension = {
-    { __DRI_IMAGE, 5 },
+    { __DRI_IMAGE, 6 },
     intel_create_image_from_name,
     intel_create_image_from_renderbuffer,
     intel_destroy_image,

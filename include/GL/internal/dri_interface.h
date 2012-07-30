@@ -924,6 +924,7 @@ struct __DRIdri2ExtensionRec {
  * by the driver (YUV planar formats) but serve as a base image for
  * creating sub-images for the different planes within the image.
  */
+#define __DRI_IMAGE_FORMAT_MASK         0x1fff
 #define __DRI_IMAGE_FORMAT_RGB565       0x1001
 #define __DRI_IMAGE_FORMAT_XRGB8888     0x1002
 #define __DRI_IMAGE_FORMAT_ARGB8888     0x1003

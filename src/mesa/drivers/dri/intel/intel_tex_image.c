@@ -243,7 +243,7 @@ intel_set_texture_image_region(struct gl_context *ctx,
 			       GLenum target,
 			       GLenum internalFormat,
 			       gl_format format,
-                               uint32_t offset)
+                               uint32_t offset, uint32_t structure)
 {
    struct intel_context *intel = intel_context(ctx);
    struct intel_texture_image *intel_image = intel_texture_image(image);
@@ -263,6 +263,7 @@ intel_set_texture_image_region(struct gl_context *ctx,
        return;
 
    intel_image->mt->offset = offset;
+   intel_image->mt->structure = structure;
    intel_image->base.RowStride = region->pitch;
 
    /* Immediately validate the image to the object. */
@@ -318,7 +319,7 @@ intelSetTexBuffer2(__DRIcontext *pDRICtx, GLint target,
    _mesa_lock_texture(&intel->ctx, texObj);
    texImage = _mesa_get_tex_image(ctx, texObj, target, level);
    intel_set_texture_image_region(ctx, texImage, rb->mt->region, target,
-				  internalFormat, texFormat, 0);
+				  internalFormat, texFormat, 0, 0);
    _mesa_unlock_texture(&intel->ctx, texObj);
 }
 
@@ -341,6 +342,7 @@ intel_image_target_texture_2d(struct gl_context *ctx, GLenum target,
    struct intel_context *intel = intel_context(ctx);
    __DRIscreen *screen;
    __DRIimage *image;
+   uint32_t structure;
 
    screen = intel->intelScreen->driScrnPriv;
    image = screen->dri2.image->lookupEGLImage(screen, image_handle,
@@ -348,9 +350,11 @@ intel_image_target_texture_2d(struct gl_context *ctx, GLenum target,
    if (image == NULL)
       return;
 
+   structure = image->dri_format & __DRI_IMAGE_STRUCTURE_MASK;
    intel_set_texture_image_region(ctx, texImage, image->region,
 				  target, image->internal_format,
-                                  image->format, image->offset);
+                                  image->format, image->offset,
+                                  structure);
 }
 #endif
 

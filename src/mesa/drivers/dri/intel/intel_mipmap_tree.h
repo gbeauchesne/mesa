@@ -247,6 +247,10 @@ struct intel_mipmap_tree
     */
    uint32_t offset;
 
+   /* Texture structure:
+    */
+   uint32_t structure;
+
    /**
     * \brief HiZ miptree
     *
