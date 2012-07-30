@@ -912,7 +912,7 @@ struct __DRIdri2ExtensionRec {
  * extensions.
  */
 #define __DRI_IMAGE "DRI_IMAGE"
-#define __DRI_IMAGE_VERSION 5
+#define __DRI_IMAGE_VERSION 6
 
 /**
  * These formats correspond to the similarly named MESA_FORMAT_*
@@ -932,6 +932,11 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_FORMAT_R8           0x1006 /* Since version 5 */
 #define __DRI_IMAGE_FORMAT_GR88         0x1007
 #define __DRI_IMAGE_FORMAT_NONE         0x1008
+
+#define __DRI_IMAGE_STRUCTURE_MASK      0xc000 /* Since version 6 */
+#define __DRI_IMAGE_STRUCTURE_FRAME     0x0000
+#define __DRI_IMAGE_STRUCTURE_TOP_FIELD 0x4000
+#define __DRI_IMAGE_STRUCTURE_BOTTOM_FIELD 0x8000
 
 #define __DRI_IMAGE_USE_SHARE		0x0001
 #define __DRI_IMAGE_USE_SCANOUT		0x0002
