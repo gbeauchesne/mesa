@@ -67,12 +67,22 @@ enum wl_drm_format {
 };
 #endif /* WL_DRM_FORMAT_ENUM */
 
+#ifndef WL_DRM_PICTURE_STRUCTURE_ENUM
+#define WL_DRM_PICTURE_STRUCTURE_ENUM
+enum wl_drm_picture_structure {
+	WL_DRM_PICTURE_STRUCTURE_FRAME = 0,
+	WL_DRM_PICTURE_STRUCTURE_TOP_FIELD = 1,
+	WL_DRM_PICTURE_STRUCTURE_BOTTOM_FIELD = 2,
+};
+#endif /* WL_DRM_PICTURE_STRUCTURE_ENUM */
+
 struct wl_drm;
 
 struct wl_drm_buffer {
 	struct wl_buffer buffer;
 	struct wl_drm *drm;
 	uint32_t format;
+	uint32_t picture_structure;
         const void *driver_format;
         int32_t offset[3];
         int32_t stride[3];

@@ -112,6 +112,7 @@ create_buffer(struct wl_client *client, struct wl_resource *resource,
 	buffer->buffer.width = width;
 	buffer->buffer.height = height;
 	buffer->format = format;
+	buffer->picture_structure = WL_DRM_PICTURE_STRUCTURE_FRAME;
 	buffer->offset[0] = offset0;
 	buffer->stride[0] = stride0;
 	buffer->offset[1] = offset1;
@@ -190,6 +191,24 @@ drm_create_planar_buffer(struct wl_client *client,
 }
 
 static void
+drm_buffer_set_picture_structure(struct wl_client *client,
+                                 struct wl_resource *resource,
+                                 struct wl_resource *buffer_resource,
+                                 uint32_t picture_structure)
+{
+        struct wl_drm_buffer * const buffer = buffer_resource->data;
+
+        if (!wayland_buffer_is_drm(&buffer->buffer)) {
+                wl_resource_post_error(resource,
+                                       WL_DRM_ERROR_INVALID_BUFFER,
+                                       "invalid buffer");
+                return;
+        }
+
+        buffer->picture_structure = picture_structure;
+}
+
+static void
 drm_authenticate(struct wl_client *client,
 		 struct wl_resource *resource, uint32_t id)
 {
@@ -206,7 +225,8 @@ drm_authenticate(struct wl_client *client,
 const static struct wl_drm_interface drm_interface = {
 	drm_authenticate,
 	drm_create_buffer,
-        drm_create_planar_buffer
+        drm_create_planar_buffer,
+        drm_buffer_set_picture_structure
 };
 
 static void
