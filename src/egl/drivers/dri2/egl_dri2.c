@@ -1135,7 +1135,7 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
    EGLint err;
    uint32_t format;
    int32_t offset, stride, plane, width, height;
-   int cpp, index;
+   int cpp, index, structure;
    const struct wl_drm_format_descriptor *f;
 
    if (!wayland_buffer_is_drm(&buffer->buffer))
@@ -1145,6 +1145,22 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
    plane = attrs.PlaneWL;
    if (err != EGL_SUCCESS) {
       _eglError(EGL_BAD_PARAMETER, "dri2_create_image_wayland_wl_buffer");
+      return NULL;
+   }
+
+   switch (buffer->picture_structure) {
+   case WL_DRM_PICTURE_STRUCTURE_FRAME:
+      structure = __DRI_IMAGE_STRUCTURE_FRAME;
+      break;
+   case WL_DRM_PICTURE_STRUCTURE_TOP_FIELD:
+      structure = __DRI_IMAGE_STRUCTURE_TOP_FIELD;
+      break;
+   case WL_DRM_PICTURE_STRUCTURE_BOTTOM_FIELD:
+      structure = __DRI_IMAGE_STRUCTURE_BOTTOM_FIELD;
+      break;
+   default:
+      _eglError(EGL_BAD_PARAMETER,
+                "dri2_create_image_wayland_wl_buffer (invalid picture structure)");
       return NULL;
    }
 
@@ -1162,6 +1178,9 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
    index = f->planes[plane].buffer_index;
    offset = buffer->offset[index];
    stride = buffer->stride[index];
+
+   if (dri2_dpy->image->base.version >= 6)
+      format |= structure;
 
    dri_image = dri2_dpy->image->createSubImage(buffer->driver_buffer,
                                                width, height, format,
