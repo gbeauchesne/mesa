@@ -1030,6 +1030,79 @@ dri2_create_image_mesa_drm_buffer(_EGLDisplay *disp, _EGLContext *ctx,
    return dri2_create_image(disp, dri_image);
 }
 
+struct dri_image_descriptor {
+   EGLint format;
+   int nplanes;
+   struct {
+      int buffer_index;
+      int width_shift;
+      int height_shift;
+      uint32_t dri_format;
+      int cpp;
+   } planes[3];
+};
+
+static const struct dri_image_descriptor dri_image_desc_ARGB8888 =
+   { EGL_TEXTURE_RGBA, 1,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 }, } };
+
+static const struct dri_image_descriptor dri_image_desc_XRGB8888 =
+   { EGL_TEXTURE_RGB, 1,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_XRGB8888, 4 }, } };
+
+static const struct dri_image_descriptor dri_image_desc_YUV410 =
+   { EGL_TEXTURE_Y_U_V_WL, 3,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 1, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 2, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 } } };
+
+static const struct dri_image_descriptor dri_image_desc_YUV411 =
+   { EGL_TEXTURE_Y_U_V_WL, 3,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 1, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 2, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 } } };
+
+static const struct dri_image_descriptor dri_image_desc_YUV420 =
+   { EGL_TEXTURE_Y_U_V_WL, 3,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 1, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 2, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 } } };
+
+static const struct dri_image_descriptor dri_image_desc_YUV422 =
+   { EGL_TEXTURE_Y_U_V_WL, 3,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 1, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 2, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 } } };
+
+static const struct dri_image_descriptor dri_image_desc_YUV444 =
+   { EGL_TEXTURE_Y_U_V_WL, 3,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 1, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 2, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 } } };
+
+static const struct dri_image_descriptor dri_image_desc_NV12 =
+   { EGL_TEXTURE_Y_UV_WL, 2,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 1, 1, 1, __DRI_IMAGE_FORMAT_GR88, 2 } } };
+
+static const struct dri_image_descriptor dri_image_desc_NV16 =
+   { EGL_TEXTURE_Y_UV_WL, 2,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
+       { 1, 1, 0, __DRI_IMAGE_FORMAT_GR88, 2 } } };
+
+   /* For YUYV buffers, we set up two overlapping DRI images and treat
+    * them as planar buffers in the compositors.  Plane 0 is GR88 and
+    * samples YU or YV pairs and places Y into the R component, while
+    * plane 1 is ARGB and samples YUYV clusters and places pairs and
+    * places U into the G component and V into A.  This lets the
+    * texture sampler interpolate the Y components correctly when
+    * sampling from plane 0, and interpolate U and V correctly when
+    * sampling from plane 1. */
+static const struct dri_image_descriptor dri_image_desc_YUYV =
+   { EGL_TEXTURE_Y_XUXV_WL, 2,
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88, 2 },
+       { 0, 1, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 } } };
+
 #ifdef HAVE_WAYLAND_PLATFORM
 
 /* This structure describes how a wl_buffer maps to one or more
@@ -1040,66 +1113,18 @@ dri2_create_image_mesa_drm_buffer(_EGLDisplay *disp, _EGLContext *ctx,
 
 static const struct wl_drm_format_descriptor {
    uint32_t wl_format;
-   EGLint components;
-   int nplanes;
-   struct {
-      int buffer_index;
-      int width_shift;
-      int height_shift;
-      uint32_t dri_format;
-      int cpp;
-   } planes[3];
+   const struct dri_image_descriptor *dri_image_desc;
 } wl_drm_formats[] = {
-   { WL_DRM_FORMAT_ARGB8888, EGL_TEXTURE_RGBA, 1,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 }, } },
-
-   { WL_DRM_FORMAT_XRGB8888, EGL_TEXTURE_RGB, 1,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_XRGB8888, 4 }, } },
-
-   { WL_DRM_FORMAT_YUV410, EGL_TEXTURE_Y_U_V_WL, 3,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 1, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 2, 2, 2, __DRI_IMAGE_FORMAT_R8, 1 } } },
-
-   { WL_DRM_FORMAT_YUV411, EGL_TEXTURE_Y_U_V_WL, 3,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 1, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 2, 2, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
-
-   { WL_DRM_FORMAT_YUV420, EGL_TEXTURE_Y_U_V_WL, 3,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 1, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 2, 1, 1, __DRI_IMAGE_FORMAT_R8, 1 } } },
-
-   { WL_DRM_FORMAT_YUV422, EGL_TEXTURE_Y_U_V_WL, 3,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 1, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 2, 1, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
-
-   { WL_DRM_FORMAT_YUV444, EGL_TEXTURE_Y_U_V_WL, 3,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 1, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 2, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 } } },
-
-   { WL_DRM_FORMAT_NV12, EGL_TEXTURE_Y_UV_WL, 2,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 1, 1, 1, __DRI_IMAGE_FORMAT_GR88, 2 } } },
-
-   { WL_DRM_FORMAT_NV16, EGL_TEXTURE_Y_UV_WL, 2,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_R8, 1 },
-       { 1, 1, 0, __DRI_IMAGE_FORMAT_GR88, 2 } } },
-
-   /* For YUYV buffers, we set up two overlapping DRI images and treat
-    * them as planar buffers in the compositors.  Plane 0 is GR88 and
-    * samples YU or YV pairs and places Y into the R component, while
-    * plane 1 is ARGB and samples YUYV clusters and places pairs and
-    * places U into the G component and V into A.  This lets the
-    * texture sampler interpolate the Y components correctly when
-    * sampling from plane 0, and interpolate U and V correctly when
-    * sampling from plane 1. */
-   { WL_DRM_FORMAT_YUYV, EGL_TEXTURE_Y_XUXV_WL, 2,
-     { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88, 2 },
-       { 0, 1, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 } } }
+   { WL_DRM_FORMAT_ARGB8888, &dri_image_desc_ARGB8888 },
+   { WL_DRM_FORMAT_XRGB8888, &dri_image_desc_XRGB8888 },
+   { WL_DRM_FORMAT_YUV410, &dri_image_desc_YUV410 },
+   { WL_DRM_FORMAT_YUV411, &dri_image_desc_YUV411 },
+   { WL_DRM_FORMAT_YUV420, &dri_image_desc_YUV420 },
+   { WL_DRM_FORMAT_YUV422, &dri_image_desc_YUV422 },
+   { WL_DRM_FORMAT_YUV444, &dri_image_desc_YUV444 },
+   { WL_DRM_FORMAT_NV12, &dri_image_desc_NV12 },
+   { WL_DRM_FORMAT_NV16, &dri_image_desc_NV16 },
+   { WL_DRM_FORMAT_YUYV, &dri_image_desc_YUYV },
 };
 
 static _EGLImage *
@@ -1115,7 +1140,7 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
    uint32_t format;
    int32_t offset, stride, plane, width, height;
    int cpp, index;
-   const struct wl_drm_format_descriptor *f;
+   const struct dri_image_descriptor *desc;
 
    if (!wayland_buffer_is_drm(&buffer->buffer))
        return NULL;
@@ -1127,18 +1152,18 @@ dri2_create_image_wayland_wl_buffer(_EGLDisplay *disp, _EGLContext *ctx,
       return NULL;
    }
 
-   f = buffer->driver_format;
-   if (plane < 0 || plane >= f->nplanes) {
+   desc = buffer->driver_format;
+   if (plane < 0 || plane >= desc->nplanes) {
       _eglError(EGL_BAD_PARAMETER,
                 "dri2_create_image_wayland_wl_buffer (plane out of bounds)");
       return NULL;
    }
 
-   width = buffer->buffer.width >> f->planes[plane].width_shift;
-   height = buffer->buffer.height >> f->planes[plane].height_shift;
-   format = f->planes[plane].dri_format;
-   cpp = f->planes[plane].cpp;
-   index = f->planes[plane].buffer_index;
+   width = buffer->buffer.width >> desc->planes[plane].width_shift;
+   height = buffer->buffer.height >> desc->planes[plane].height_shift;
+   format = desc->planes[plane].dri_format;
+   cpp = desc->planes[plane].cpp;
+   index = desc->planes[plane].buffer_index;
    offset = buffer->offset[index];
    stride = buffer->stride[index];
 
@@ -1309,7 +1334,7 @@ dri2_wl_reference_buffer(void *user_data, uint32_t name,
 
    for (i = 0; i < ARRAY_SIZE(wl_drm_formats); i++)
       if (wl_drm_formats[i].wl_format == buffer->format) {
-         buffer->driver_format = &wl_drm_formats[i];
+         buffer->driver_format = wl_drm_formats[i].dri_image_desc;
          break;
       }
 
@@ -1387,15 +1412,15 @@ dri2_query_wayland_buffer_wl(_EGLDriver *drv, _EGLDisplay *disp,
                              EGLint attribute, EGLint *value)
 {
    struct wl_drm_buffer *buffer = (struct wl_drm_buffer *) _buffer;
-   const struct wl_drm_format_descriptor *format;
+   const struct dri_image_descriptor *desc;
 
    if (!wayland_buffer_is_drm(&buffer->buffer))
       return EGL_FALSE;
 
-   format = buffer->driver_format;
+   desc = buffer->driver_format;
    switch (attribute) {
    case EGL_TEXTURE_FORMAT:
-      *value = format->components;
+      *value = desc->format;
       return EGL_TRUE;
    case EGL_WIDTH:
       *value = buffer->buffer.width;
