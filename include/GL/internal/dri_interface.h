@@ -912,7 +912,7 @@ struct __DRIdri2ExtensionRec {
  * extensions.
  */
 #define __DRI_IMAGE "DRI_IMAGE"
-#define __DRI_IMAGE_VERSION 5
+#define __DRI_IMAGE_VERSION 6
 
 /**
  * These formats correspond to the similarly named MESA_FORMAT_*
@@ -1061,6 +1061,34 @@ struct __DRIimageExtensionRec {
     */
     __DRIimage *(*fromPlanar)(__DRIimage *image, int plane,
                               void *loaderPrivate);
+
+   /**
+    * Create an image out of a VA/EGL buffer. This entry-point lets us create
+    * individual __DRIimages for different planes in a planar buffer, similar
+    * to fromPlanar(), but with a VA/EGL buffer as source.
+    *
+    * Buffer structure, if non-zero, specifies the desired sampling from the
+    * client application. e.g. if a YUV surface was provided but
+    * @buffer_structure is VA_EGL_BUFFER_STRUCTURE_RGBA, this means the user
+    * would like to get RGBA samples from the YUV surface, i.e. color space
+    * conversion is to be performed by the underlying hardware without shader
+    * code. If the hardware does not support this capability, the function
+    * shall return NULL, thus indicating to client application that a planar
+    * format should be tried instead and suitable shader code provided.
+    *
+    * Picture structure represents the full frame (default, if zero), the top
+    * or the bottom field for interlaced surfaces. Note that for those two
+    * modes, this basically actually means whether to render every other line
+    * or not. If not proper hardware function supports that capability, or
+    * that using double stride and half height doesn't work, then this
+    * entry-point shall return NULL.
+    *
+    * \since 6
+    */
+    __DRIimage *(*createImageFromVABuffer)(__DRIscreen *screen, void *buffer,
+                                           int buffer_structure, int plane,
+                                           int picture_structure,
+                                           void *loaderPrivate);
 };
 
 

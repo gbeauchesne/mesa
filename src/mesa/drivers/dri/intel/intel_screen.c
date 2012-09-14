@@ -36,6 +36,11 @@
 #include "main/version.h"
 #include "swrast/s_renderbuffer.h"
 
+#ifdef HAVE_VA_EGL_INTEROP
+#  include <va/va_egl.h>
+#  include <va/va_backend_egl.h>
+#endif
+
 #include "utils.h"
 #include "xmlpool.h"
 
@@ -572,8 +577,133 @@ intel_from_planar(__DRIimage *parent, int plane, void *loaderPrivate)
     return image;
 }
 
+#ifdef HAVE_VA_EGL_INTEROP
+static const struct va_dri_image_descriptor {
+   uint32_t format;
+   uint32_t dri_fourcc;
+   int nplanes;
+} va_dri_image_descriptors[] = {
+   { VA_EGL_PIXEL_FORMAT_ARGB8888, __DRI_IMAGE_FOURCC_ARGB8888, 1 },
+   { VA_EGL_PIXEL_FORMAT_XRGB8888, __DRI_IMAGE_FOURCC_XRGB8888, 1 },
+   { VA_EGL_PIXEL_FORMAT_ABGR8888, __DRI_IMAGE_FOURCC_ABGR8888, 1 },
+   { VA_EGL_PIXEL_FORMAT_NV12, __DRI_IMAGE_FOURCC_NV12, 2 },
+   { VA_EGL_PIXEL_FORMAT_YUV410P, __DRI_IMAGE_FOURCC_YUV410, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV411P, __DRI_IMAGE_FOURCC_YUV411, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV420P, __DRI_IMAGE_FOURCC_YUV420, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV422P, __DRI_IMAGE_FOURCC_YUV422, 3 },
+   { VA_EGL_PIXEL_FORMAT_YUV444P, __DRI_IMAGE_FOURCC_YUV444, 3 },
+};
+
+struct va_dri_image {
+   __DRIimage *image;
+   const struct va_dri_image_descriptor *desc;
+};
+
+static void
+intel_destroy_va_image(struct va_dri_image *img)
+{
+   if (!img)
+      return;
+   if (img->image)
+      intel_destroy_image(img->image);
+   free(img);
+}
+
+static struct va_dri_image *
+intel_create_va_image(__DRIscreen *screen, struct va_egl_client_buffer *buffer)
+{
+   struct va_dri_image *img = NULL;
+   int i, handle, pitches[3], offsets[3];
+
+   for (i = 0; i < ARRAY_SIZE(va_dri_image_descriptors); i++) {
+      if (va_dri_image_descriptors[i].format == buffer->format)
+         break;
+   }
+   if (i == ARRAY_SIZE(va_dri_image_descriptors)) {
+      _mesa_error(NULL, GL_INVALID_OPERATION,
+                  "DRI2-VA: failed to validate pixel format %d",
+                  buffer->format);
+      goto error;
+   }
+
+   img = malloc(sizeof(*img));
+   if (!img) {
+      _mesa_error(NULL, GL_OUT_OF_MEMORY, "DRI2-VA: failed to create VA image");
+      goto error;
+   }
+   img->desc = &va_dri_image_descriptors[i];
+
+   handle = buffer->handle;
+   for (i = 0; i < buffer->num_planes; i++) {
+      pitches[i] = buffer->pitches[i];
+      offsets[i] = buffer->offsets[i];
+   }
+   for (; i < ARRAY_SIZE(pitches); i++) {
+      pitches[i] = 0;
+      offsets[i] = 0;
+   }
+   img->image = intel_create_image_from_names(
+      screen, buffer->width, buffer->height,
+      img->desc->dri_fourcc, &handle, 1, pitches, offsets,
+      NULL);
+   if (!img->image)
+      goto error;
+
+   buffer->private_data = img;
+   buffer->destroy_private_data = (void (*)(void *))intel_destroy_va_image;
+   return img;
+
+error:
+   free(img);
+   return NULL;
+}
+#endif
+
+static __DRIimage *
+intel_create_image_from_va_buffer(__DRIscreen *screen, void *_buffer,
+                                  int buffer_structure, int plane,
+                                  int picture_structure, void *loaderPrivate)
+{
+#ifdef HAVE_VA_EGL_INTEROP
+   struct va_egl_client_buffer * const buffer = _buffer;
+   struct va_dri_image *img;
+
+   if (!buffer || buffer->version != VA_EGL_CLIENT_BUFFER_VERSION) {
+      _mesa_error(NULL, GL_INVALID_VALUE,
+                  "DRI2-VA: unsupported EGLClientBuffer");
+      return NULL;
+   }
+
+   if (buffer_structure && buffer_structure != buffer->structure) {
+      _mesa_error(NULL, GL_INVALID_VALUE,
+                  "DRI2-VA: buffer structure coercition is not supported yet");
+      return NULL;
+   }
+
+   if (picture_structure != VA_EGL_PICTURE_STRUCTURE_FRAME) {
+      _mesa_error(NULL, GL_INVALID_VALUE,
+                  "DRI2-VA: interlaced picture structure is not supported yet");
+      return NULL;
+   }
+
+   img = buffer->private_data;
+   if (!img) {
+      img = intel_create_va_image(screen, buffer);
+      if (!img)
+         return NULL;
+   }
+
+   if (plane >= img->desc->nplanes) {
+      _mesa_error(NULL, GL_INVALID_VALUE, "DRI2-VA: invalid plane index");
+      return NULL;
+   }
+   return intel_from_planar(img->image, plane, loaderPrivate);
+#endif
+   return NULL;
+}
+
 static struct __DRIimageExtensionRec intelImageExtension = {
-    { __DRI_IMAGE, 5 },
+    { __DRI_IMAGE, 6 },
     intel_create_image_from_name,
     intel_create_image_from_renderbuffer,
     intel_destroy_image,
@@ -582,7 +712,8 @@ static struct __DRIimageExtensionRec intelImageExtension = {
     intel_dup_image,
     intel_validate_usage,
     intel_create_image_from_names,
-    intel_from_planar
+    intel_from_planar,
+    intel_create_image_from_va_buffer
 };
 
 static const __DRIextension *intelScreenExtensions[] = {

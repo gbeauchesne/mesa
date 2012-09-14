@@ -44,11 +44,6 @@
 #include <GL/gl.h>
 #include <GL/internal/dri_interface.h>
 
-#ifdef HAVE_VA_EGL_INTEROP
-#  include <va/va_egl.h>
-#  include <va/va_backend_egl.h>
-#endif
-
 #ifdef HAVE_DRM_PLATFORM
 #include <gbm_driint.h>
 #endif
