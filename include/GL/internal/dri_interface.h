@@ -1021,6 +1021,7 @@ struct __DRIdri2ExtensionRec {
  * createImage, and are returned by query from sub images created with
  * createImageFromNames (NONE, see above) and fromPlane (R8 & GR88).
  */
+#define __DRI_IMAGE_FORMAT_MASK         0xffff
 #define __DRI_IMAGE_FORMAT_RGB565       0x1001
 #define __DRI_IMAGE_FORMAT_XRGB8888     0x1002
 #define __DRI_IMAGE_FORMAT_ARGB8888     0x1003
@@ -1032,6 +1033,13 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_FORMAT_XRGB2101010  0x1009
 #define __DRI_IMAGE_FORMAT_ARGB2101010  0x100a
 #define __DRI_IMAGE_FORMAT_SARGB8       0x100b
+
+/** Special base value for mesa_format derived formats */
+#define __DRI_IMAGE_FORMAT_MESA_BASE    0x100c
+
+/** Generates a DRI image format that packs a mesa_format */
+#define __DRI_IMAGE_FORMAT_MESA(mesa_format) \
+   (__DRI_IMAGE_FORMAT_MESA_BASE | ((mesa_format) << 16))
 
 #define __DRI_IMAGE_USE_SHARE		0x0001
 #define __DRI_IMAGE_USE_SCANOUT		0x0002
@@ -1061,6 +1069,10 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_FOURCC_NV16		0x3631564e
 #define __DRI_IMAGE_FOURCC_YUYV		0x56595559
 
+/** Generates a DRI image FOURCC value for a standard GL texture format */
+#define __DRI_IMAGE_FOURCC_GL_FORMAT(gl_format) \
+   ((uint32_t)('G') | ((uint32_t)('L') << 8) | ((gl_format) << 16))
+
 
 /**
  * Queryable on images created by createImageFromNames.
@@ -1080,6 +1092,10 @@ struct __DRIdri2ExtensionRec {
 #define __DRI_IMAGE_COMPONENTS_Y_U_V	0x3003
 #define __DRI_IMAGE_COMPONENTS_Y_UV	0x3004
 #define __DRI_IMAGE_COMPONENTS_Y_XUXV	0x3005
+#define __DRI_IMAGE_COMPONENTS_X	0x3006
+#define __DRI_IMAGE_COMPONENTS_XY	0x3007
+#define __DRI_IMAGE_COMPONENTS_XYZ	0x3008
+#define __DRI_IMAGE_COMPONENTS_XYZW	0x3009
 
 
 /**

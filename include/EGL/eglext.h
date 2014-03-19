@@ -447,6 +447,7 @@ EGLAPI EGLBoolean EGLAPIENTRY eglQuerySurfacePointerANGLE (EGLDisplay dpy, EGLSu
 #define EGL_YUV_NARROW_RANGE_EXT          0x3283
 #define EGL_YUV_CHROMA_SITING_0_EXT       0x3284
 #define EGL_YUV_CHROMA_SITING_0_5_EXT     0x3285
+#define EGL_IMAGE_INTERNAL_FORMAT_EXT     0x1003
 #endif /* EGL_EXT_image_dma_buf_import */
 
 #ifndef EGL_EXT_multiview_window

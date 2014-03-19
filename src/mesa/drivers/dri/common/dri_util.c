@@ -834,14 +834,14 @@ driGLFormatToImageFormat(mesa_format format)
    case MESA_FORMAT_B8G8R8A8_SRGB:
       return __DRI_IMAGE_FORMAT_SARGB8;
    default:
-      return 0;
+      return __DRI_IMAGE_FORMAT_MESA(format);
    }
 }
 
 mesa_format
 driImageFormatToGLFormat(uint32_t image_format)
 {
-   switch (image_format) {
+   switch (image_format & __DRI_IMAGE_FORMAT_MASK) {
    case __DRI_IMAGE_FORMAT_RGB565:
       return MESA_FORMAT_B5G6R5_UNORM;
    case __DRI_IMAGE_FORMAT_XRGB8888:
@@ -864,6 +864,8 @@ driImageFormatToGLFormat(uint32_t image_format)
       return MESA_FORMAT_B8G8R8A8_SRGB;
    case __DRI_IMAGE_FORMAT_NONE:
       return MESA_FORMAT_NONE;
+   case __DRI_IMAGE_FORMAT_MESA_BASE:
+      return (mesa_format)(image_format >> 16);
    default:
       return MESA_FORMAT_NONE;
    }
