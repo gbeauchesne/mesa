@@ -275,7 +275,37 @@ static struct intel_image_format intel_image_formats[] = {
     * sampling from plane 1. */
    { __DRI_IMAGE_FOURCC_YUYV, __DRI_IMAGE_COMPONENTS_Y_XUXV, 2,
      { { 0, 0, 0, __DRI_IMAGE_FORMAT_GR88, 2 },
-       { 0, 1, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 } } }
+       { 0, 1, 0, __DRI_IMAGE_FORMAT_ARGB8888, 4 } } },
+
+   /* GL internal formats, which are essentially packed */
+#define DEF_FORMAT(GL_FORMAT, MESA_FORMAT, COMPONENTS, BPC)             \
+   { __DRI_IMAGE_FOURCC_GL_FORMAT(GL_##GL_FORMAT),                      \
+     __DRI_IMAGE_COMPONENTS_##COMPONENTS, 1,                            \
+     { { 0, 0, 0, __DRI_IMAGE_FORMAT_MESA(MESA_FORMAT_##MESA_FORMAT), BPC } } }
+
+#define DEF_FORMAT_C(GL_COMPS, COMPS)                           \
+   DEF_FORMAT(GL_COMPS##8,       GL_COMPS##_UNORM8,  COMPS, 1), \
+   DEF_FORMAT(GL_COMPS##8I,      GL_COMPS##_SINT8,   COMPS, 1), \
+   DEF_FORMAT(GL_COMPS##8UI,     GL_COMPS##_UINT8,   COMPS, 1), \
+   DEF_FORMAT(GL_COMPS##8_SNORM, GL_COMPS##_SNORM8,  COMPS, 1), \
+   DEF_FORMAT(GL_COMPS##16I,     GL_COMPS##_SINT16,  COMPS, 2), \
+   DEF_FORMAT(GL_COMPS##16UI,    GL_COMPS##_UINT16,  COMPS, 2), \
+   DEF_FORMAT(GL_COMPS##16F,     GL_COMPS##_FLOAT16, COMPS, 2), \
+   DEF_FORMAT(GL_COMPS##32I,     GL_COMPS##_SINT32,  COMPS, 4), \
+   DEF_FORMAT(GL_COMPS##32UI,    GL_COMPS##_UINT32,  COMPS, 4), \
+   DEF_FORMAT(GL_COMPS##32F,     GL_COMPS##_FLOAT32, COMPS, 4)
+
+#define MESA_FORMAT_RG_UNORM8    MESA_FORMAT_R8G8_UNORM
+#define MESA_FORMAT_RG_SNORM8    MESA_FORMAT_R8G8_SNORM
+#define MESA_FORMAT_RGBA_UNORM8  MESA_FORMAT_R8G8B8A8_UNORM
+#define MESA_FORMAT_RGBA_SNORM8  MESA_FORMAT_R8G8B8A8_SNORM
+
+   DEF_FORMAT_C(R,      X),
+   DEF_FORMAT_C(RG,     XY),
+   DEF_FORMAT_C(RGBA,   XYZW),
+
+#undef DEF_FORMAT_C
+#undef DEF_FORMAT
 };
 
 static void
