@@ -1528,7 +1528,7 @@ dri2_check_dma_buf_attribs(const _EGLImageAttribs *attrs)
      *    incomplete, EGL_BAD_PARAMETER is generated."
      */
    if (attrs->Width <= 0 || attrs->Height <= 0 ||
-       !attrs->DMABufFourCC.IsPresent) {
+       (!attrs->DMABufFourCC.IsPresent && !attrs->InternalFormat.IsPresent)) {
       _eglError(EGL_BAD_PARAMETER, "attribute(s) missing");
       return EGL_FALSE;
    }
@@ -1621,6 +1621,10 @@ dri2_check_dma_buf_format(const _EGLImageAttribs *attrs)
       plane_n = 3;
       break;
    default:
+      if (attrs->InternalFormat.IsPresent) {
+         plane_n = 1;
+         break;
+      }
       _eglError(EGL_BAD_ATTRIBUTE, "invalid format");
       return 0;
    }
@@ -1728,6 +1732,12 @@ dri2_create_image_dma_buf(_EGLDisplay *disp, _EGLContext *ctx,
 
    if (!dri2_check_dma_buf_attribs(&attrs))
       return NULL;
+
+   if (!attrs.DMABufFourCC.IsPresent || attrs.DMABufFourCC.Value == 0) {
+      attrs.DMABufFourCC.Value =
+         __DRI_IMAGE_FOURCC_GL_FORMAT(attrs.InternalFormat.Value);
+      attrs.DMABufFourCC.IsPresent = EGL_TRUE;
+   }
 
    num_fds = dri2_check_dma_buf_format(&attrs);
    if (!num_fds)

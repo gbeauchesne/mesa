@@ -60,6 +60,7 @@ struct _egl_image_attribs
    EGLint PlaneWL;
 
    /* EGL_EXT_image_dma_buf_import */
+   struct _egl_image_attrib_int InternalFormat;
    struct _egl_image_attrib_int DMABufFourCC;
    struct _egl_image_attrib_int DMABufPlaneFds[3];
    struct _egl_image_attrib_int DMABufPlaneOffsets[3];

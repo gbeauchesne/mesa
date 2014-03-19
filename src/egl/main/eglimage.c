@@ -93,6 +93,11 @@ _eglParseImageAttribList(_EGLImageAttribs *attrs, _EGLDisplay *dpy,
          attrs->PlaneWL = val;
          break;
 
+      /* EXT_image_dma_buf_import */
+      case EGL_IMAGE_INTERNAL_FORMAT_EXT:
+         attrs->InternalFormat.Value = val;
+         attrs->InternalFormat.IsPresent = EGL_TRUE;
+         break;
       case EGL_LINUX_DRM_FOURCC_EXT:
          attrs->DMABufFourCC.Value = val;
          attrs->DMABufFourCC.IsPresent = EGL_TRUE;
